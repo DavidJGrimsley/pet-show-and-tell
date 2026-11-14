@@ -23,7 +23,8 @@ People who enjoy pets need a welcoming place to introduce their pets and browse 
 - No sign-in, account management, or remote identity.
 - No backend, shared database, cloud media storage, public distribution, or cross-device sync.
 - No moderation service, reporting, or notifications.
-- No web/iOS, EAS, monetization, or store submission in this milestone.
+- No iOS, monetization, or store submission in this milestone.
+- A static web export for the hosted i² preview, and an EAS Android emulator APK profile, are in scope. The web preview is not a public site and does not add a backend.
 - Comments are a follow-up TODO for the prototype to complete, not part of the initial runnable flow.
 
 ## First User Flow
@@ -39,7 +40,7 @@ People who enjoy pets need a welcoming place to introduce their pets and browse 
 - Browse the seeded feed plus posts created on this device.
 - Open a post-detail screen.
 - Like or Love a post; only one reaction can be selected at a time, and tapping it again clears it.
-- Persist profile, posts, and reactions on device so they remain available while navigating and after restarting the app.
+- Persist profile, posts, and reactions on device so they remain available while navigating and after restarting the app. The web preview keeps that state for the browser session only.
 - Comments remain a Phase 2/prototype follow-up task. No network publishing.
 
 ## Screens
@@ -59,7 +60,7 @@ People who enjoy pets need a welcoming place to introduce their pets and browse 
 - Newly created profile and post photos stay on device. Do not upload images.
 
 ## Data Needs
-- Data mode: device-local Expo SQLite with Zustand shared state; no remote or server data.
+- Data mode: device-local Expo SQLite with Zustand shared state; no remote or server data. The web preview uses the same pet API in memory, seeded on each new tab, with an optional sessionStorage mirror.
 - Local app state and device-local persistence only.
 - Store one local pet profile, local posts, and the user's Like/Love reaction per post.
 - Seed six pets and eight posts. Keep the data models and fixtures in files that can be edited without a backend.
@@ -71,10 +72,11 @@ People who enjoy pets need a welcoming place to introduce their pets and browse 
 ## Platforms
 - Target and first MVP platform: Android.
 - Local preview: Android emulator through Expo Go.
+- Hosted preview: `npm run export:web` writes a static Metro bundle to `dist-web/web`. `PET_WEB_BASE_PATH` sets the sub-path (default `/`). The portfolio serves that folder behind login. The i² frame supplies the phone chrome, so the web build does not draw its own status or navigation bar.
 - No production release is planned.
 
 ## Release Strategy
-The first version is an internal demo run locally in Expo Go on an Android emulator for prototype and tutorial use. It is not released through a store, web deployment, or public hosting.
+The first version is an internal demo run locally in Expo Go on an Android emulator for prototype and tutorial use. A static web export can also be shown inside the hosted i² phone frame. It is not released through a store or public hosting.
 
 ## Monetization Strategy
 No monetization planned.
@@ -105,10 +107,10 @@ These items are separate from the on-device demo and need product/security plann
 - React Native StyleSheet only; Zustand for shared app state.
 - No auth/backend starter or separate API server.
 - Local data mode; persist profile, posts, and reactions on device. No remote API calls.
-- Use `expo-image-picker` for local photos and `expo-file-system` to copy them into app-owned storage; files remain on device.
+- Use `expo-image-picker` for local photos and `expo-file-system` to copy them into app-owned storage; files remain on device. The web preview stores the chosen picture as a data URL in the session.
 - No Expo UI or Native Tabs; preserve Expo Go compatibility.
 - Multi-screen onboarding; handoff to pet setup and then the app.
-- No EAS, legal-document generation, or store deployment.
+- EAS is limited to the Android emulator APK profile. No legal-document generation or store deployment.
 - Keep the MDS project/guidelines template and test-to-main safeguards.
 - Do not save these selections as permanent personal defaults.
 
@@ -133,8 +135,8 @@ Phase 0 records this product and stack boundary. Phase 1 builds the app shell, o
 - Navigation: Expo Router
 - Navigation type: Stack
 - Expo Router app directory: src/app
-- Platform strategy: Android-only, platform-specific files and layouts
-- Web output: none
+- Platform strategy: Android-only product, plus a static web export for the hosted preview
+- Web output: Metro single-page export (`web.output: single`) for the hosted i² preview
 - Style library: React Native StyleSheet only
 - create-expo-app components: No
 - Expo UI: No
@@ -151,8 +153,8 @@ Phase 0 records this product and stack boundary. Phase 1 builds the app shell, o
 - Starting data mode: local dummy data with Expo SQLite
 - Internationalization: none
 - Analytics: none
-- EAS: No
-- Deployment plan: local Android emulator with Expo Go
+- EAS: Android emulator APK profile only
+- Deployment plan: local Android emulator with Expo Go, plus `dist-web/web` for the hosted preview
 - Project/guidelines template: Yes
 - Test-to-main safeguards: Yes
 - Save personal defaults: No

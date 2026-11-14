@@ -8,6 +8,8 @@
 
 ## Product Boundary
 - First release is an Android Expo Go demo for one device.
+- A static web export is in scope for the hosted i² phone-frame preview. It is session-only, same-origin, and not a public website. `npm run export:web` writes it; `PET_WEB_BASE_PATH` sets the sub-path.
+- `eas.json` has an Android emulator APK profile. Store submission and iOS stay out of scope.
 - The user creates one pet profile and local photo posts; seeded community-style posts are also shown.
 - No sign-in, network API, public upload, shared storage, moderation service, or cross-device sync.
 - Comments stay as an explicit tutorial-sized follow-up unless the owner updates the roadmap.
@@ -21,8 +23,9 @@
 - Use React Native StyleSheet only; do not introduce Uniwind, NativeWind, or a second style system.
 - Use Zustand for shared state across feed, detail, profile, and composer.
 - Keep image selection on device and use an Expo-compatible image picker.
-- Use local data and SQLite for on-device persistence. Do not add remote calls.
-- Do not add Expo UI, Native Tabs, authentication, EAS, or legal-document generation.
+- Use local data and SQLite for on-device persistence. The web preview uses an in-memory session copy instead of SQLite, because the hosted frame has no cross-origin-isolation headers. Do not add remote calls.
+- Do not add Expo UI, Native Tabs, authentication, or legal-document generation.
+- EAS stays limited to the Android emulator APK profile. Do not submit to a store.
 - Never put secrets in the app or EXPO_PUBLIC variables.
 
 ## Visual Direction
