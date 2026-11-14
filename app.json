@@ -4,9 +4,7 @@
     "slug": "pet-show-and-tell",
     "version": "1.0.0",
     "scheme": "pet-show-and-tell",
-    "platforms": [
-      "android"
-    ],
+    "platforms": ["android"],
     "plugins": [
       "expo-router",
       [
@@ -46,10 +44,9 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "android": {
+      "package": "com.mrdj.petshowandtell",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#e5eee3"
