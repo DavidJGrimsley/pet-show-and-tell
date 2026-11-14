@@ -4,7 +4,7 @@
     "slug": "pet-show-and-tell",
     "version": "1.0.0",
     "scheme": "pet-show-and-tell",
-    "platforms": ["android"],
+    "platforms": ["android", "web"],
     "plugins": [
       "expo-router",
       [
@@ -58,6 +58,11 @@
       "backgroundColor": "#f7f5ef",
       "barStyle": "dark-content",
       "translucent": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
     },
     "extra": {
       "router": {
