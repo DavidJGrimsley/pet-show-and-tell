@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 
 import {
+  consumeWebPreviewReset,
   createLocalPetPost,
   getPetSnapshot,
+  resetPetDatabase,
   saveLocalPetProfile,
   saveLocalReaction,
 } from '../../storage/pet-database';
@@ -15,8 +17,9 @@ interface PetStore {
   pets: Pet[];
   posts: PetPost[];
   reactions: Record<string, ReactionKind>;
-  hydrate: () => Promise<void>;
+  hydrate: () => Promise<boolean>;
   refresh: () => Promise<void>;
+  resetPreview: () => Promise<void>;
   saveProfile: (input: PetProfileInput, petId?: string) => Promise<Pet>;
   addPost: (input: PetPostInput) => Promise<PetPost>;
   toggleReaction: (postId: string, reaction: ReactionKind) => Promise<void>;
@@ -31,9 +34,17 @@ export const usePetStore = create<PetStore>((set, get) => ({
   reactions: {},
 
   hydrate: async () => {
-    if (get().isHydrated) {
-      return;
+    const didReset = await consumeWebPreviewReset();
+    if (!didReset && get().isHydrated) {
+      return false;
     }
+    await get().refresh();
+    return didReset;
+  },
+
+  resetPreview: async () => {
+    set({ error: null });
+    await resetPetDatabase();
     await get().refresh();
   },
 

@@ -328,6 +328,14 @@ export async function createLocalPetPost(input: PetPostInput): Promise<PetPost> 
   return post;
 }
 
+export async function resetPetDatabase(): Promise<void> {
+  throw new Error('Restoring the sample pets is only available in the web preview.');
+}
+
+export async function consumeWebPreviewReset() {
+  return false;
+}
+
 export async function saveLocalReaction(postId: string, reaction: ReactionKind | null) {
   await initializePetDatabase();
   const database = await getDatabase();

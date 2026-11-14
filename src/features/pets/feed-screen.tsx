@@ -34,8 +34,18 @@ export default function FeedScreen() {
   );
 
   useEffect(() => {
-    void hydrate().catch(() => undefined);
-  }, [hydrate]);
+    let cancelled = false;
+    void hydrate()
+      .then((didReset) => {
+        if (!cancelled && didReset) {
+          router.replace('/');
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrate, router]);
 
   useEffect(() => {
     if (isHydrated && ownedPets.length === 0) {

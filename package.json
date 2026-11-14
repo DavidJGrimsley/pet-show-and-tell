@@ -28,7 +28,8 @@
     "post-create-check": "npx expo install --fix && npx expo-doctor",
     "ci:verify": "npx mds doctor --ci",
     "test:pet-migration": "node --experimental-sqlite scripts/test-pet-migration.cjs",
-    "test": "npm run lint && npm run typecheck && npm run test:pet-migration"
+    "test:web-data": "node scripts/test-pet-web-data.cjs",
+    "test": "npm run lint && npm run typecheck && npm run test:pet-migration && npm run test:web-data"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
