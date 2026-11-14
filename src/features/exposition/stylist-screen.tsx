@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedPressable } from '../../components/swmansion/animated-pressable';
 import { EMBEDDED_GOOGLE_FONTS } from './embedded-fonts';
+import { googleFontsCssUrl, googleFontsListUrl } from './remote-font-url';
 import defaultThemeTokens, {
   type StylistColorMode,
   type StylistColorPalette,
@@ -122,7 +123,6 @@ const colorInputModeOptions: { label: string; value: ColorInputMode }[] = [
 const NATIVE_SAVE_COMMAND = 'npm run stylist:sync:android';
 const GOOGLE_FONTS_KEY_STORAGE = 'mds.stylist.googleFontsApiKey';
 const GOOGLE_FONTS_BANNER_DISMISSED_STORAGE = 'mds.stylist.googleFontsBannerDismissed';
-const GOOGLE_FONTS_API_URL = 'https://www.googleapis.com/webfonts/v1/webfonts';
 const WEB_LAST_SYNC_MESSAGE_STORAGE = 'mds.stylist.lastSyncMessage';
 const WEB_SYSTEM_FONTS = new Set([
   'system',
@@ -827,11 +827,6 @@ function resolvePreviewFontWeight(
   return isNativeUnsafeFont(fontFamily) ? 'normal' : weight;
 }
 
-function buildGoogleFontsStylesheetUrl(fontFamily: string): string {
-  const familyParam = normalizeFontFamilyName(fontFamily).replace(/\s+/g, '+');
-  return `https://fonts.googleapis.com/css2?family=${familyParam}:wght@400;500;700;800&display=swap`;
-}
-
 function ensureWebFontLoaded(fontFamily: string): void {
   if (Platform.OS !== 'web' || typeof document === 'undefined') {
     return;
@@ -852,9 +847,14 @@ function ensureWebFontLoaded(fontFamily: string): void {
     return;
   }
 
+  const href = googleFontsCssUrl(normalized.replace(/\s+/g, '+'));
+  if (!href) {
+    return;
+  }
+
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = buildGoogleFontsStylesheetUrl(normalized);
+  link.href = href;
   link.setAttribute('data-stylist-font', normalized);
   document.head.appendChild(link);
   loadedWebFonts.add(normalized);
@@ -1292,12 +1292,20 @@ export default function StylistScreen() {
         return;
       }
 
+      const listUrl = googleFontsListUrl(apiKey);
+      if (!listUrl) {
+        if (!cancelled) {
+          setRemoteFonts([]);
+          setFontFetchError('Google Fonts stays off in this preview.');
+          setLoadingFonts(false);
+        }
+        return;
+      }
+
       setLoadingFonts(true);
       setFontFetchError('');
       try {
-        const response = await fetch(
-          `${GOOGLE_FONTS_API_URL}?sort=popularity&key=${encodeURIComponent(apiKey)}`
-        );
+        const response = await fetch(listUrl);
         const payload = (await response.json()) as {
           items?: { family?: string }[];
           error?: { message?: string };

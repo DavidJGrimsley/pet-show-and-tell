@@ -153,7 +153,8 @@ export default function CreatePostScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.petSelectorScroll}>
+            contentContainerStyle={styles.petSelectorScroll}
+            style={styles.boundedScroll}>
             {ownedPets.map((p) => {
               const isSelected = p.id === pet.id;
               return (
@@ -305,7 +306,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     gap: 8,
+    overflow: 'hidden',
     padding: 12,
+    width: '100%',
+  },
+  boundedScroll: {
+    width: '100%',
   },
   petSelectorLabel: {
     color: '#4f6256',

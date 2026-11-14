@@ -1,7 +1,9 @@
-import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ExpositionNotice, PackageCard } from '../../components/exposition';
 import { useAppTheme } from '../../theme/provider';
+import { TutorialLinkText } from './tutorial-link';
+import { sdkDocLinks, sdkVideoLinks } from './tutorial-links';
 
 const highlights = [
   {
@@ -9,67 +11,42 @@ const highlights = [
     title: 'Expo UI is production-ready',
     packageName: '@expo/ui',
     body: 'SwiftUI and Jetpack Compose APIs are stable in SDK 56 with deeper native parity.',
-    links: [{ label: 'Expo UI docs', href: 'https://docs.expo.dev/versions/latest/sdk/ui/' }],
+    links: [sdkDocLinks.expoUi],
   },
   {
     kind: 'universal',
     title: 'Universal components',
     packageName: '@expo/ui',
     body: 'Host, Button, Switch, Text, layout primitives, lists, and controls can live in one source tree.',
-    links: [
-      {
-        label: 'Universal components docs',
-        href: 'https://docs.expo.dev/versions/latest/sdk/ui/universal/',
-      },
-    ],
+    links: [sdkDocLinks.universal],
   },
   {
     kind: 'native-state',
     title: 'useNativeState',
     packageName: '@expo/ui/swift-ui',
     body: 'Native state can drive form controls and text entry without JS-thread controlled-input jitter.',
-    links: [
-      {
-        label: 'useNativeState docs',
-        href: 'https://docs.expo.dev/versions/latest/sdk/ui/swift-ui/usenativestate/',
-      },
-    ],
+    links: [sdkDocLinks.nativeState],
   },
   {
     kind: 'drop-in',
     title: 'Drop-in replacements',
     packageName: '@expo/ui',
     body: 'Expo UI maps common community UI primitives to native-backed replacements.',
-    links: [
-      {
-        label: 'Drop-in replacements docs',
-        href: 'https://docs.expo.dev/versions/latest/sdk/ui/drop-in-replacements/',
-      },
-    ],
+    links: [sdkDocLinks.dropIn],
   },
   {
     kind: 'inline-modules',
     title: 'Inline modules',
     packageName: 'expo-modules-core',
     body: 'Swift/Kotlin modules can be authored directly beside app code for project-local native features.',
-    links: [
-      {
-        label: 'Inline modules tutorial',
-        href: 'https://docs.expo.dev/modules/inline-modules-tutorial/',
-      },
-    ],
+    links: [sdkDocLinks.inlineModules],
   },
   {
     kind: 'native-tabs',
     title: 'Router and native tabs',
     packageName: 'expo-router',
     body: 'Expo Router absorbs more of its stack internals and ships stronger native tabs support.',
-    links: [
-      {
-        label: 'Native tabs docs',
-        href: 'https://docs.expo.dev/versions/latest/sdk/router/native-tabs/',
-      },
-    ],
+    links: [sdkDocLinks.nativeTabs],
   },
   {
     kind: 'runtime',
@@ -83,14 +60,14 @@ const highlights = [
     title: 'Widgets',
     packageName: 'expo-widgets',
     body: 'Expo widgets are stable, with strong iOS support for lock-screen and home-screen experiences.',
-    links: [{ label: 'Widgets docs', href: 'https://docs.expo.dev/versions/latest/sdk/widgets/' }],
+    links: [sdkDocLinks.widgets],
   },
   {
     kind: 'audio',
     title: 'Audio and haptics updates',
     packageName: 'expo-audio + expo-haptics',
     body: 'Audio streaming primitives improved and haptics coverage keeps expanding.',
-    links: [{ label: 'Expo Audio docs', href: 'https://docs.expo.dev/versions/latest/sdk/audio/' }],
+    links: [sdkDocLinks.audio],
   },
 ];
 
@@ -270,13 +247,11 @@ export default function ExpoSdk56Screen() {
             {item.links.length ? (
               <View style={styles.linkList}>
                 {item.links.map((link) => (
-                  <Text
-                    key={link.href}
-                    accessibilityRole="link"
-                    onPress={() => Linking.openURL(link.href)}
-                    style={[styles.link, { color: colors.secondary }]}>
-                    {link.label}
-                  </Text>
+                  <TutorialLinkText
+                    key={link.label}
+                    link={link}
+                    style={[styles.link, { color: colors.secondary }]}
+                  />
                 ))}
               </View>
             ) : null}
@@ -289,20 +264,13 @@ export default function ExpoSdk56Screen() {
           { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}>
         <Text style={[styles.linksTitle, { color: colors.text }]}>Video sources</Text>
-        <Text
-          accessibilityRole="link"
-          onPress={() => Linking.openURL('https://www.youtube.com/watch?v=MKqGbv-Tssg&t')}
-          style={[styles.link, { color: colors.secondary }]}>
-          {
-            "What's New in Expo SDK 56: Expo UI, Inline Swift/Kotlin Modules, and Faster Builds by Expo"
-          }
-        </Text>
-        <Text
-          accessibilityRole="link"
-          onPress={() => Linking.openURL('https://www.youtube.com/watch?v=ywvywq0AGPM')}
-          style={[styles.link, { color: colors.secondary }]}>
-          Everything new in Expo SDK 56 by Code with Beto
-        </Text>
+        {sdkVideoLinks.map((link) => (
+          <TutorialLinkText
+            key={link.label}
+            link={link}
+            style={[styles.link, { color: colors.secondary }]}
+          />
+        ))}
       </View>
     </ScrollView>
   );
@@ -316,7 +284,7 @@ const styles = StyleSheet.create({
   content: {
     gap: 16,
     padding: 20,
-    paddingTop: Platform.OS === 'web' ? 92 : 20,
+    paddingTop: 20,
   },
   title: {
     color: '#111827',

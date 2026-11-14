@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     gap: 16,
     justifyContent: 'center',
     padding: 20,
-    paddingTop: Platform.OS === 'web' ? 84 : 20,
+    paddingTop: 20,
   },
   header: {
     alignItems: 'center',

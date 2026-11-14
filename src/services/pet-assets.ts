@@ -48,6 +48,7 @@ export function resolvePetImageSource(
     photoUri.startsWith('file:') ||
     photoUri.startsWith('content:') ||
     photoUri.startsWith('ph:') ||
+    photoUri.startsWith('blob:') ||
     photoUri.startsWith('http:') ||
     photoUri.startsWith('https:') ||
     photoUri.startsWith('data:')

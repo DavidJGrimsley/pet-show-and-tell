@@ -2,7 +2,11 @@ import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { createEmptyOnboardingState } from '../onboarding-state/onboarding-state-types';
+import { setPersistedOnboardingState } from '../onboarding-state/onboarding-store';
+import { usePetStore } from '../pets/pet-store';
 
 import { getReadableTextColor } from '../../theme/color-utils';
 import { useAppTheme } from '../../theme/provider';
@@ -67,7 +71,25 @@ export default function SettingsScreen({ auth, legalUrls, profileHref }: Setting
   );
   const [notice, setNotice] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const dangerForeground = getReadableTextColor(colors.warning, theme.colors.light.text);
+  const primaryForeground = getReadableTextColor(colors.primary, theme.colors.light.text);
+
+  async function handleRestorePreview() {
+    if (isRestoring) {
+      return;
+    }
+    setIsRestoring(true);
+    setNotice(null);
+    try {
+      setPersistedOnboardingState(createEmptyOnboardingState());
+      await usePetStore.getState().resetPreview();
+      router.replace('/');
+    } catch (error) {
+      setIsRestoring(false);
+      setNotice(error instanceof Error ? error.message : 'The sample pets could not be restored.');
+    }
+  }
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -181,6 +203,24 @@ export default function SettingsScreen({ auth, legalUrls, profileHref }: Setting
         </View>
 
         <View style={styles.actions}>
+          {Platform.OS === 'web' ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={isRestoring}
+              onPress={() => void handleRestorePreview()}
+              style={[
+                styles.primaryButton,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: theme.layout.radius,
+                  opacity: isRestoring ? 0.7 : 1,
+                },
+              ]}>
+              <Text style={[styles.primaryButtonText, { color: primaryForeground }]}>
+                {isRestoring ? 'Restoring sample pets...' : 'Restore sample pets'}
+              </Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             disabled={!user || isSigningOut}

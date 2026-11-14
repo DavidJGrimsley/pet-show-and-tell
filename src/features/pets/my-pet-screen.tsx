@@ -118,7 +118,8 @@ export default function MyPetScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.switcherScroll}>
+                contentContainerStyle={styles.switcherScroll}
+                style={styles.boundedScroll}>
                 {ownedPets.map((p) => {
                   const isSelected = p.id === pet.id;
                   return (
@@ -260,7 +261,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 10,
     marginBottom: 4,
+    overflow: 'hidden',
     padding: 14,
+    width: '100%',
+  },
+  boundedScroll: {
+    width: '100%',
   },
   switcherHeader: {
     alignItems: 'center',

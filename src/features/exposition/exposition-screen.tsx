@@ -1,4 +1,4 @@
-import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   AnimatedPressable,
@@ -10,6 +10,8 @@ import {
   SoftwareMansionLogo,
 } from '../../components/exposition';
 import { useAppTheme } from '../../theme/provider';
+import { TutorialLinkText } from './tutorial-link';
+import { expositionLinks } from './tutorial-links';
 
 export default function ExpositionScreen() {
   const theme = useAppTheme();
@@ -43,90 +45,76 @@ export default function ExpositionScreen() {
         packageName="reanimated-color-picker"
         title="Stylist color editing"
         body="Stylist uses this package for the hue slider, color preview, and manual palette picker that writes theme tokens.">
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.colorPicker}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() => Linking.openURL('https://github.com/alabsi91/reanimated-color-picker')}>
-          Reanimated Color Picker
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="@react-native-async-storage/async-storage"
         title="Stylist local preferences"
         body="Stylist stores local-only preferences such as the Google Fonts API key, dismissed banners, and editor settings with Async Storage.">
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.asyncStorage}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() =>
-            Linking.openURL('https://react-native-async-storage.github.io/async-storage/')
-          }>
-          Async Storage Docs
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="react-native-safe-area-context"
         title="Stylist safe spacing"
         body="Stylist reads safe-area insets so editor controls stay clear of cutouts, native tabs, and device navigation areas.">
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.safeArea}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() =>
-            Linking.openURL('https://docs.expo.dev/versions/latest/sdk/safe-area-context/')
-          }>
-          Expo SDK - SafeAreaContext
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="tailwindcss/colors"
         title="Stylist palette families"
         body="Stylist uses Tailwind color families and shade scales to drive the palette-family mode and accessible token previews.">
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.tailwind}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() => Linking.openURL('https://tailwindcss.com/docs/customizing-colors')}>
-          Tailwind CSS - Colors
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="expo-router API routes"
         title="Stylist sync endpoint"
         body="Stylist uses an Expo Router +api route so both native and web can sync theme output files by calling /exposition/stylist-sync.">
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.apiRoutes}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() => Linking.openURL('https://docs.expo.dev/router/web/api-routes/')}>
-          Expo Router - API Routes
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="react-native-reanimated + react-native-worklets"
         title="Motion that feels native"
         body="Press the button to see the Reanimated timing demo. Worklets make this kind of UI-thread animation possible.">
         <AnimatedPressable label="Press and hold" />
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.reanimated}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() => Linking.openURL('https://docs.swmansion.com/react-native-reanimated')}>
-          Software Mansion - Reanimated
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="react-native-gesture-handler"
         title="Gesture-first interactions"
         body="Drag the card below. If your product does not need touch-heavy interactions, this demo helps you decide what to remove.">
         <GestureCard title="Drag me" body="This card springs back when the gesture ends." />
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.gestureHandler}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() =>
-            Linking.openURL('https://docs.swmansion.com/react-native-gesture-handler')
-          }>
-          Software Mansion - Gesture Handler
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="react-native-screens"
         title="Native navigation primitives"
         body="Screens support the navigation layer with native lifecycle and memory behavior.">
         <ScreensCard />
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.screens}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() => Linking.openURL('https://docs.swmansion.com/react-native-screens')}>
-          Software Mansion - Screens
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="react-native-svg"
@@ -135,24 +123,20 @@ export default function ExpositionScreen() {
         <View style={styles.svgDemo}>
           <SoftwareMansionLogo width={150} height={80} />
         </View>
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.svg}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() => Linking.openURL('https://docs.expo.dev/versions/latest/sdk/svg')}>
-          Expo SDK - SVG
-        </Text>
+        />
       </PackageCard>
       <PackageCard
         packageName="react-native-keyboard-controller"
         title="Keyboard-heavy screens"
         body="Use this when forms, chat, notes, or auth flows need better keyboard control than manual offsets.">
         <KeyboardForm />
-        <Text
+        <TutorialLinkText
+          link={expositionLinks.keyboard}
           style={[styles.link, { color: colors.secondary }]}
-          onPress={() =>
-            Linking.openURL('https://kirillzyusko.github.io/react-native-keyboard-controller/')
-          }>
-          Kirill Zyusko - Keyboard Controller
-        </Text>
+        />
       </PackageCard>
     </ScrollView>
   );
@@ -166,7 +150,7 @@ const styles = StyleSheet.create({
   content: {
     gap: 16,
     padding: 20,
-    paddingTop: Platform.OS === 'web' ? 92 : 20,
+    paddingTop: 20,
   },
   title: {
     color: '#111827',

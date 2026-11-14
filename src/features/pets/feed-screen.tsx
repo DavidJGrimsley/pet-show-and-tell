@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -111,6 +112,14 @@ export default function FeedScreen() {
             </Pressable>
           </View>
           <Text style={styles.subtitle}>Good pictures. Good company. Good pets.</Text>
+          {Platform.OS === 'web' ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/settings')}
+              style={styles.settingsLink}>
+              <Text style={styles.settingsLinkText}>Settings</Text>
+            </Pressable>
+          ) : null}
           <View style={styles.communityCard}>
             <View style={styles.communityCopy}>
               <Text style={styles.communityTitle}>Share a little moment</Text>
@@ -132,7 +141,8 @@ export default function FeedScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.petReelScroll}>
+                contentContainerStyle={styles.petReelScroll}
+                style={styles.boundedScroll}>
                 {ownedPets.map((p) => (
                   <Pressable
                     key={p.id}
@@ -267,6 +277,14 @@ const styles = StyleSheet.create({
     color: '#65756b',
     fontSize: 13,
   },
+  settingsLink: {
+    alignSelf: 'flex-start',
+  },
+  settingsLinkText: {
+    color: '#355e48',
+    fontSize: 13,
+    fontWeight: '800',
+  },
   profileButton: {
     alignItems: 'center',
     backgroundColor: '#e6eee5',
@@ -322,7 +340,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   petReel: {
+    overflow: 'hidden',
     paddingVertical: 2,
+    width: '100%',
+  },
+  boundedScroll: {
+    width: '100%',
   },
   petReelScroll: {
     alignItems: 'center',

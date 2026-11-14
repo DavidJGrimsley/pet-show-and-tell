@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getReadableTextColor } from '../../theme/color-utils';
 import { useAppTheme } from '../../theme/provider';
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     gap: 18,
     justifyContent: 'center',
     padding: 20,
-    paddingTop: Platform.OS === 'web' ? 84 : 28,
+    paddingTop: 28,
   },
   header: {
     gap: 8,
