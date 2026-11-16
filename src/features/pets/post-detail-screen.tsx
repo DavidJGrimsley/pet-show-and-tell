@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Container } from '../../components/Container';
 import { PetArtwork } from '../../components/pet-artwork';
 import type { ReactionKind } from '../../types/pet';
 import { usePetStore } from './pet-store';
@@ -18,6 +19,10 @@ export default function PostDetailScreen() {
   const reactions = usePetStore((state) => state.reactions);
   const refresh = usePetStore((state) => state.refresh);
   const toggleReaction = usePetStore((state) => state.toggleReaction);
+  const deletePost = usePetStore((state) => state.deletePost);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const post = posts.find((item) => item.id === postId);
   const pet = pets.find((item) => item.id === post?.petId);
   const reaction = reactions[postId];
@@ -78,77 +83,149 @@ export default function PostDetailScreen() {
     void toggleReaction(post.id, kind).catch(() => undefined);
   };
 
+  const handleDelete = async () => {
+    if (!pet.isUserPet || isDeleting) {
+      return;
+    }
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deletePost(post.id);
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : 'We could not delete this moment. Please try again.'
+      );
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}
       style={styles.screen}>
-      <PetArtwork
-        aspectRatio={0.98}
-        name={pet.name}
-        photoUri={post.photoUri}
-        species={pet.species}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={'View ' + pet.name + "'s profile"}
-        onPress={() => router.push({ pathname: '/my-pet', params: { id: pet.id } })}
-        style={styles.titleGroup}>
-        <View style={styles.titleRow}>
-          <Text style={styles.petName}>{pet.name}</Text>
-          <View style={styles.profileLink}>
-            <Text style={styles.profileLinkText}>View profile ›</Text>
+      <Container>
+        <View style={styles.innerContainer}>
+          <PetArtwork
+            aspectRatio={0.98}
+            name={pet.name}
+            photoUri={post.photoUri}
+            species={pet.species}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={'View ' + pet.name + "'s profile"}
+            onPress={() => router.push({ pathname: '/my-pet', params: { id: pet.id } })}
+            style={styles.titleGroup}>
+            <View style={styles.titleRow}>
+              <Text style={styles.petName}>{pet.name}</Text>
+              <View style={styles.profileLink}>
+                <Text style={styles.profileLinkText}>View profile ›</Text>
+              </View>
+            </View>
+            <Text style={styles.species}>
+              {pet.species} · {dateLabel}
+            </Text>
+          </Pressable>
+          <Text selectable style={styles.description}>
+            {post.caption}
+          </Text>
+          <View>
+            <Text style={styles.personalityLabel}>Personality</Text>
+            <Text selectable style={styles.description}>
+              {pet.personality}
+            </Text>
           </View>
+
+          <View style={styles.reactions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={'Like ' + pet.name + "'s post"}
+              accessibilityState={{ selected: reaction === 'like' }}
+              onPress={() => react('like')}
+              style={[styles.reaction, reaction === 'like' ? styles.likeSelected : null]}>
+              <Text style={styles.reactionEmoji}>👍</Text>
+              <Text style={[styles.reactionText, reaction === 'like' ? styles.activeText : null]}>
+                Like
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={'Love ' + pet.name + "'s post"}
+              accessibilityState={{ selected: reaction === 'love' }}
+              onPress={() => react('love')}
+              style={[styles.reaction, reaction === 'love' ? styles.loveSelected : null]}>
+              <Text style={styles.reactionEmoji}>💚</Text>
+              <Text style={[styles.reactionText, reaction === 'love' ? styles.activeText : null]}>
+                Love
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.localNote}>
+            <Text style={styles.localNoteEmoji}>🔒</Text>
+            <Text style={styles.localNoteText}>
+              Your reaction is saved on this device. This demo does not publish activity to a public
+              service.
+            </Text>
+          </View>
+          {pet.isUserPet ? (
+            <View style={styles.deleteSection}>
+              {deleteError ? (
+                <Text accessibilityRole="alert" style={styles.deleteError}>
+                  {deleteError}
+                </Text>
+              ) : null}
+              {confirmingDelete ? (
+                <View style={styles.deleteConfirmRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={isDeleting}
+                    onPress={() => {
+                      setConfirmingDelete(false);
+                      setDeleteError(null);
+                    }}
+                    style={styles.cancelDeleteButton}>
+                    <Text style={styles.cancelDeleteText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={'Confirm delete ' + pet.name + "'s moment"}
+                    disabled={isDeleting}
+                    onPress={() => void handleDelete()}
+                    style={styles.confirmDeleteButton}>
+                    <Text style={styles.confirmDeleteText}>
+                      {isDeleting ? 'Deleting…' : 'Confirm delete'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={'Delete ' + pet.name + "'s moment"}
+                  onPress={() => {
+                    setDeleteError(null);
+                    setConfirmingDelete(true);
+                  }}
+                  style={styles.deleteButton}>
+                  <Text style={styles.deleteButtonText}>Delete moment</Text>
+                </Pressable>
+              )}
+            </View>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.back()}
+            style={styles.backButton}>
+            <Text style={styles.backText}>Back to the feed</Text>
+          </Pressable>
         </View>
-        <Text style={styles.species}>
-          {pet.species} · {dateLabel}
-        </Text>
-      </Pressable>
-      <Text selectable style={styles.description}>
-        {post.caption}
-      </Text>
-      <View>
-        <Text style={styles.personalityLabel}>Personality</Text>
-        <Text selectable style={styles.description}>
-          {pet.personality}
-        </Text>
-      </View>
-
-      <View style={styles.reactions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={'Like ' + pet.name + "'s post"}
-          accessibilityState={{ selected: reaction === 'like' }}
-          onPress={() => react('like')}
-          style={[styles.reaction, reaction === 'like' ? styles.likeSelected : null]}>
-          <Text style={styles.reactionEmoji}>👍</Text>
-          <Text style={[styles.reactionText, reaction === 'like' ? styles.activeText : null]}>
-            Like
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={'Love ' + pet.name + "'s post"}
-          accessibilityState={{ selected: reaction === 'love' }}
-          onPress={() => react('love')}
-          style={[styles.reaction, reaction === 'love' ? styles.loveSelected : null]}>
-          <Text style={styles.reactionEmoji}>💚</Text>
-          <Text style={[styles.reactionText, reaction === 'love' ? styles.activeText : null]}>
-            Love
-          </Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.localNote}>
-        <Text style={styles.localNoteEmoji}>🔒</Text>
-        <Text style={styles.localNoteText}>
-          Your reaction is saved on this device. This demo does not publish activity to a public
-          service.
-        </Text>
-      </View>
-      <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backText}>Back to the feed</Text>
-      </Pressable>
+      </Container>
     </ScrollView>
   );
 }
@@ -165,9 +242,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    paddingBottom: 36,
+  },
+  innerContainer: {
     gap: 15,
     padding: 18,
-    paddingBottom: 36,
+    width: '100%',
   },
   loading: {
     alignItems: 'center',
@@ -208,7 +288,7 @@ const styles = StyleSheet.create({
   },
   petName: {
     color: '#263d32',
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '900',
   },
   species: {
@@ -217,8 +297,8 @@ const styles = StyleSheet.create({
   },
   description: {
     color: '#35483b',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 26,
   },
   reactions: {
     flexDirection: 'row',
@@ -281,6 +361,61 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   backText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  deleteSection: {
+    gap: 8,
+  },
+  deleteError: {
+    color: '#9f3428',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  deleteConfirmRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  deleteButton: {
+    alignItems: 'center',
+    borderColor: '#dc9487',
+    borderRadius: 17,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 16,
+  },
+  deleteButtonText: {
+    color: '#9f3428',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cancelDeleteButton: {
+    alignItems: 'center',
+    borderColor: '#dfe5db',
+    borderRadius: 17,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 16,
+  },
+  cancelDeleteText: {
+    color: '#506057',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  confirmDeleteButton: {
+    alignItems: 'center',
+    backgroundColor: '#9f3428',
+    borderRadius: 17,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 16,
+  },
+  confirmDeleteText: {
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '900',

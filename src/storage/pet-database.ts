@@ -74,6 +74,15 @@ export async function initializePetDatabase() {
           'seed-captions-v1'
         );
         if (done) return;
+        const v1Captions: Record<string, string> = {
+          'post-nora-1': 'A cozy moment with Nora.',
+          'post-mia-1': 'A little moment with Mia.',
+          'post-mrs-frizzle-1': 'Meet Mrs Frizzle.',
+          'post-nala-1': 'Meet Nala.',
+          'post-lil-mama-1': "A moment with Lil' Mama.",
+          'post-louie-1': 'A moment with Louie.',
+          'post-tippy-1': 'A moment with Tippy.',
+        };
         const oldCaptions: Record<string, string> = {
           'post-nora-1': 'Sweet princess dog that likes to sleep in and bake in the sun.',
           'post-mia-1': 'Little dog with a big personality.',
@@ -83,19 +92,69 @@ export async function initializePetDatabase() {
           'post-louie-1': 'Karuma as a dog but a cuddly bear at the same time.',
           'post-tippy-1': 'Crazy and sweet.',
         };
-        for (const post of INITIAL_SEEDED_POSTS) {
-          const oldCaption = oldCaptions[post.id];
-          if (oldCaption) {
+        for (const [postId, oldCaption] of Object.entries(oldCaptions)) {
+          const nextCaption = v1Captions[postId];
+          if (nextCaption) {
             await database.runAsync(
-              'UPDATE posts SET description = ? WHERE id = ? AND photoUri = ? AND description = ?',
-              post.caption,
-              post.id,
-              post.photoUri,
+              'UPDATE posts SET description = ? WHERE id = ? AND description = ?',
+              nextCaption,
+              postId,
               oldCaption
             );
           }
         }
         await database.runAsync('INSERT INTO app_migrations (id) VALUES (?)', 'seed-captions-v1');
+      };
+      const applySeedUpdatesV2 = async () => {
+        const done = await database.getFirstAsync<{ id: string }>(
+          'SELECT id FROM app_migrations WHERE id = ?',
+          'seed-v2'
+        );
+        if (done) return;
+
+        await database.runAsync(
+          "UPDATE pets SET photoUri = 'asset:Mrs Frizzle.jpg' WHERE id = 'pet-mrs-frizzle' AND photoUri = 'asset:Mrs Frizzle.jpeg'"
+        );
+        await database.runAsync(
+          "UPDATE posts SET photoUri = 'asset:Mrs Frizzle.jpg' WHERE id = 'post-mrs-frizzle-1' AND photoUri = 'asset:Mrs Frizzle.jpeg'"
+        );
+        await database.runAsync(
+          "UPDATE pets SET isUserPet = 0 WHERE id IN ('pet-mia', 'pet-tippy') AND isUserPet = 1"
+        );
+
+        const previousCaptions: Record<string, string[]> = {
+          'post-nora-1': [
+            'Sweet princess dog that likes to sleep in and bake in the sun.',
+            'A cozy moment with Nora.',
+          ],
+          'post-mia-1': ['Little dog with a big personality.', 'A little moment with Mia.'],
+          'post-mrs-frizzle-1': ['Likes to dig.', 'Meet Mrs Frizzle.'],
+          'post-nala-1': ['Likes to climb.', 'Meet Nala.'],
+          'post-lil-mama-1': [
+            'A wiggle worm that has a heart of gold.',
+            "A moment with Lil' Mama.",
+          ],
+          'post-lil-mama-2': ['Happy wiggles and sunny smiles.'],
+          'post-louie-1': [
+            'Karuma as a dog but a cuddly bear at the same time.',
+            'A moment with Louie.',
+          ],
+          'post-louie-2': ['Full cuddly bear mode in his favorite cozy spot.'],
+          'post-tippy-1': ['Crazy and sweet.'],
+        };
+        for (const post of INITIAL_SEEDED_POSTS) {
+          const legacyCaptions = previousCaptions[post.id];
+          if (!legacyCaptions?.length) continue;
+          const placeholders = legacyCaptions.map(() => '?').join(', ');
+          await database.runAsync(
+            `UPDATE posts SET description = ? WHERE id = ? AND description IN (${placeholders})`,
+            post.caption,
+            post.id,
+            ...legacyCaptions
+          );
+        }
+
+        await database.runAsync('INSERT INTO app_migrations (id) VALUES (?)', 'seed-v2');
       };
       const applied = await database.getFirstAsync<{ id: string }>(
         'SELECT id FROM app_migrations WHERE id = ?',
@@ -116,6 +175,7 @@ export async function initializePetDatabase() {
           await database.runAsync('INSERT INTO app_migrations (id) VALUES (?)', 'louie-caption-v1');
         }
         await updateSeedCaptions();
+        await applySeedUpdatesV2();
         return;
       }
       // 1. Remove legacy sample seeds idempotently, preserving user-created records and reactions
@@ -187,20 +247,21 @@ export async function initializePetDatabase() {
         );
       }
 
-      // 3. Insert the other 6 owned pets
+      // 3. Insert the other seeded pets
       for (const pet of INITIAL_SEEDED_PETS) {
         if (pet.name === 'Louie') {
           continue;
         }
         await database.runAsync(
           'INSERT OR IGNORE INTO pets (id, name, species, photoUri, description, createdAt, isUserPet) ' +
-            'VALUES (?, ?, ?, ?, ?, ?, 1)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?)',
           pet.id,
           pet.name,
           pet.species,
           pet.photoUri,
           pet.personality,
-          pet.createdAt
+          pet.createdAt,
+          pet.isUserPet ? 1 : 0
         );
       }
 
@@ -222,6 +283,7 @@ export async function initializePetDatabase() {
       await database.runAsync('INSERT INTO app_migrations (id) VALUES (?)', 'personal-pets-v1');
       await database.runAsync('INSERT INTO app_migrations (id) VALUES (?)', 'louie-caption-v1');
       await updateSeedCaptions();
+      await applySeedUpdatesV2();
     });
   })();
 
@@ -260,13 +322,20 @@ export async function saveLocalPetProfile(input: PetProfileInput, petId?: string
   await initializePetDatabase();
   const database = await getDatabase();
   const createdAt = new Date().toISOString();
+  const trimmedPhotoUri = input.photoUri.trim();
 
   if (petId) {
+    const existingBefore = await database.getFirstAsync<PetRow>(
+      'SELECT id, name, species, photoUri, description AS personality, createdAt, isUserPet FROM pets WHERE id = ? AND isUserPet = 1',
+      petId
+    );
+    if (!existingBefore) throw new Error('This pet profile could not be found.');
+    const nextPhotoUri = trimmedPhotoUri || existingBefore.photoUri;
     const result = await database.runAsync(
       'UPDATE pets SET name = ?, species = ?, photoUri = ?, description = ? WHERE id = ? AND isUserPet = 1',
       input.name.trim(),
       input.species.trim(),
-      input.photoUri,
+      nextPhotoUri,
       input.personality.trim(),
       petId
     );
@@ -284,6 +353,10 @@ export async function saveLocalPetProfile(input: PetProfileInput, petId?: string
     throw new Error('This pet profile could not be found.');
   }
 
+  if (!trimmedPhotoUri) {
+    throw new Error('A profile photo is required.');
+  }
+
   const id = createLocalId('pet-user');
   await database.runAsync(
     'INSERT INTO pets (id, name, species, photoUri, description, createdAt, isUserPet) ' +
@@ -291,7 +364,7 @@ export async function saveLocalPetProfile(input: PetProfileInput, petId?: string
     id,
     input.name.trim(),
     input.species.trim(),
-    input.photoUri,
+    trimmedPhotoUri,
     input.personality.trim(),
     createdAt
   );
@@ -300,7 +373,7 @@ export async function saveLocalPetProfile(input: PetProfileInput, petId?: string
     id,
     name: input.name.trim(),
     species: input.species.trim(),
-    photoUri: input.photoUri,
+    photoUri: trimmedPhotoUri,
     personality: input.personality.trim(),
     createdAt,
     isUserPet: true,
@@ -326,6 +399,18 @@ export async function createLocalPetPost(input: PetPostInput): Promise<PetPost> 
     post.createdAt
   );
   return post;
+}
+
+export async function deleteLocalPetPost(postId: string): Promise<void> {
+  await initializePetDatabase();
+  const database = await getDatabase();
+  const result = await database.runAsync(
+    'DELETE FROM posts WHERE id = ? AND EXISTS (SELECT 1 FROM pets WHERE pets.id = posts.petId AND pets.isUserPet = 1)',
+    postId
+  );
+  if (result.changes === 0) {
+    throw new Error('This moment could not be deleted.');
+  }
 }
 
 export async function resetPetDatabase(): Promise<void> {

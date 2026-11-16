@@ -53,7 +53,44 @@ async function main() {
   assert.equal(snapshot.posts.length, 9);
   assert.equal(
     snapshot.posts.find((post) => post.id === 'post-nora-1').caption,
-    'A cozy moment with Nora.'
+    'What a cozy girl.'
+  );
+  assert.equal(snapshot.posts.find((post) => post.id === 'post-mia-1').caption, 'Is that a smile?');
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-mrs-frizzle-1').caption,
+    'Coming right at ya.'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-nala-1').caption,
+    'Beware of the beauty.'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-lil-mama-1').caption,
+    'Always wanting belly rubs'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-lil-mama-2').caption,
+    'Right before she ran away.'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-louie-1').caption,
+    'My what a big mouth you have, Grandma.'
+  );
+  assert.equal(
+    snapshot.pets.find((pet) => pet.id === 'pet-mrs-frizzle').photoUri,
+    'asset:Mrs Frizzle.jpg'
+  );
+  assert.equal(snapshot.pets.find((pet) => pet.id === 'pet-mia').isUserPet, false);
+  assert.equal(snapshot.pets.find((pet) => pet.id === 'pet-tippy').isUserPet, false);
+  assert.equal(snapshot.pets.find((pet) => pet.id === 'pet-louie').isUserPet, true);
+
+  await assert.rejects(
+    api.saveLocalPetProfile({
+      name: 'No Photo',
+      species: 'Dog',
+      photoUri: '   ',
+      personality: 'Missing photo',
+    })
   );
   const addedPet = await api.saveLocalPetProfile({
     name: 'Test pet',
@@ -61,6 +98,16 @@ async function main() {
     photoUri: 'file:test',
     personality: 'Test',
   });
+  const editedKeepPhoto = await api.saveLocalPetProfile(
+    {
+      name: 'Test pet',
+      species: 'Dog',
+      photoUri: '',
+      personality: 'Updated',
+    },
+    addedPet.id
+  );
+  assert.equal(editedKeepPhoto.photoUri, 'file:test');
   const addedPost = await api.createLocalPetPost({
     petId: addedPet.id,
     photoUri: 'file:post',
@@ -70,6 +117,18 @@ async function main() {
     (await api.getPetSnapshot()).posts.find((post) => post.id === addedPost.id).petId,
     addedPet.id
   );
+  await assert.rejects(api.deleteLocalPetPost('post-mia-1'));
+  await api.saveLocalReaction(addedPost.id, 'love');
+  await api.deleteLocalPetPost(addedPost.id);
+  assert.equal(
+    (await api.getPetSnapshot()).posts.some((post) => post.id === addedPost.id),
+    false
+  );
+  const recreatedPost = await api.createLocalPetPost({
+    petId: addedPet.id,
+    photoUri: 'file:post',
+    caption: 'Test post',
+  });
   await assert.rejects(
     api.saveLocalPetProfile(
       { name: 'Missing', species: 'Dog', photoUri: '', personality: 'Test' },
@@ -86,19 +145,80 @@ async function main() {
   assert.equal(snapshot.pets.find((pet) => pet.id === louie.id).personality, 'Edited');
   assert.equal(snapshot.pets.find((pet) => pet.id === louie.id).photoUri, 'file:mine');
   assert.equal(snapshot.posts.length, 10);
-  assert.equal(snapshot.posts.find((post) => post.id === addedPost.id).caption, 'Test post');
+  assert.equal(snapshot.posts.find((post) => post.id === recreatedPost.id).caption, 'Test post');
 
-  // Upgrade an existing installation and preserve a caption the user changed.
+  // Upgrade an existing installation and preserve a caption the user changed,
+  // while still updating an unchanged old caption even if the post photo was replaced.
   db.raw.exec(
-    "DELETE FROM app_migrations WHERE id = 'seed-captions-v1'; UPDATE posts SET description = 'Sweet princess dog that likes to sleep in and bake in the sun.' WHERE id = 'post-nora-1'; UPDATE posts SET description = 'My own caption' WHERE id = 'post-mia-1';"
+    "DELETE FROM app_migrations WHERE id IN ('seed-captions-v1', 'seed-v2'); UPDATE pets SET photoUri = 'asset:Mrs Frizzle.jpeg' WHERE id = 'pet-mrs-frizzle'; UPDATE pets SET isUserPet = 1 WHERE id IN ('pet-mia', 'pet-tippy'); UPDATE posts SET description = 'Sweet princess dog that likes to sleep in and bake in the sun.' WHERE id = 'post-nora-1'; UPDATE posts SET description = 'My own caption' WHERE id = 'post-mia-1'; UPDATE posts SET photoUri = 'asset:Mrs Frizzle.jpeg', description = 'Meet Mrs Frizzle.' WHERE id = 'post-mrs-frizzle-1'; UPDATE posts SET photoUri = 'file:custom-louie-post', description = 'A moment with Louie.' WHERE id = 'post-louie-1';"
   );
   api = loadDatabaseModule();
   snapshot = await api.getPetSnapshot();
   assert.equal(
     snapshot.posts.find((post) => post.id === 'post-nora-1').caption,
-    'A cozy moment with Nora.'
+    'What a cozy girl.'
   );
   assert.equal(snapshot.posts.find((post) => post.id === 'post-mia-1').caption, 'My own caption');
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-mrs-frizzle-1').photoUri,
+    'asset:Mrs Frizzle.jpg'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-mrs-frizzle-1').caption,
+    'Coming right at ya.'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-louie-1').photoUri,
+    'file:custom-louie-post'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-louie-1').caption,
+    'My what a big mouth you have, Grandma.'
+  );
+  assert.equal(snapshot.pets.find((pet) => pet.id === 'pet-mia').isUserPet, false);
+  assert.equal(snapshot.pets.find((pet) => pet.id === 'pet-tippy').isUserPet, false);
+
+  // Regression: seed-captions-v1 already recorded, seeded post photo replaced,
+  // and original seeded caption left unchanged by an earlier photo-coupled migration.
+  db.raw.exec(
+    "DELETE FROM app_migrations WHERE id = 'seed-v2'; INSERT OR IGNORE INTO app_migrations (id) VALUES ('seed-captions-v1'); UPDATE posts SET photoUri = 'file:custom-louie-post-v1', description = 'Karuma as a dog but a cuddly bear at the same time.' WHERE id = 'post-louie-1'; UPDATE posts SET photoUri = 'file:custom-nora-post', description = 'Sweet princess dog that likes to sleep in and bake in the sun.' WHERE id = 'post-nora-1'; UPDATE posts SET photoUri = 'file:custom-tippy-post', description = 'Crazy and sweet.' WHERE id = 'post-tippy-1'; UPDATE posts SET photoUri = 'file:custom-mia-post', description = 'My custom Mia caption' WHERE id = 'post-mia-1';"
+  );
+  api = loadDatabaseModule();
+  snapshot = await api.getPetSnapshot();
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-louie-1').photoUri,
+    'file:custom-louie-post-v1'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-louie-1').caption,
+    'My what a big mouth you have, Grandma.'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-nora-1').photoUri,
+    'file:custom-nora-post'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-nora-1').caption,
+    'What a cozy girl.'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-tippy-1').photoUri,
+    'file:custom-tippy-post'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-tippy-1').caption,
+    'A moment with Tippy.'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-mia-1').photoUri,
+    'file:custom-mia-post'
+  );
+  assert.equal(
+    snapshot.posts.find((post) => post.id === 'post-mia-1').caption,
+    'My custom Mia caption'
+  );
+  assert.equal(snapshot.posts.find((post) => post.id === recreatedPost.id).photoUri, 'file:post');
+  assert.equal(snapshot.posts.find((post) => post.id === recreatedPost.id).caption, 'Test post');
 
   db = newDb();
   db.raw.exec(

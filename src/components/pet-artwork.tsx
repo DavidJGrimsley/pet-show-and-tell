@@ -7,6 +7,8 @@ interface PetArtworkProps {
   name: string;
   species: string;
   aspectRatio?: number;
+  hideBadges?: boolean;
+  compact?: boolean;
 }
 
 function getArtwork(photoUri: string, species: string) {
@@ -29,7 +31,14 @@ function getArtwork(photoUri: string, species: string) {
   return { emoji: '🐶', background: '#f4e6d5', accent: '#e7cbb0' };
 }
 
-export function PetArtwork({ photoUri, name, species, aspectRatio = 1.3 }: PetArtworkProps) {
+export function PetArtwork({
+  photoUri,
+  name,
+  species,
+  aspectRatio = 1.3,
+  hideBadges = false,
+  compact = false,
+}: PetArtworkProps) {
   const imageSource = resolvePetImageSource(photoUri);
   if (imageSource) {
     return (
@@ -49,20 +58,24 @@ export function PetArtwork({ photoUri, name, species, aspectRatio = 1.3 }: PetAr
     <View
       accessibilityLabel={'Sample picture of ' + name + ', ' + species}
       style={[styles.sample, { aspectRatio, backgroundColor: artwork.background }]}>
-      <View style={[styles.sun, { backgroundColor: artwork.accent }]} />
+      {hideBadges ? null : <View style={[styles.sun, { backgroundColor: artwork.accent }]} />}
       <View style={styles.horizon} />
-      <Text style={styles.emoji}>{artwork.emoji}</Text>
-      <View style={styles.caption}>
-        <Text style={styles.captionTitle} numberOfLines={1}>
-          {name}
-        </Text>
-        <Text style={styles.captionSpecies} numberOfLines={1}>
-          {species}
-        </Text>
-      </View>
-      <View style={styles.sampleBadge}>
-        <Text style={styles.sampleBadgeText}>SAMPLE</Text>
-      </View>
+      <Text style={[styles.emoji, compact ? styles.emojiCompact : null]}>{artwork.emoji}</Text>
+      {hideBadges ? null : (
+        <View style={styles.caption}>
+          <Text style={styles.captionTitle} numberOfLines={1}>
+            {name}
+          </Text>
+          <Text style={styles.captionSpecies} numberOfLines={1}>
+            {species}
+          </Text>
+        </View>
+      )}
+      {hideBadges ? null : (
+        <View style={styles.sampleBadge}>
+          <Text style={styles.sampleBadgeText}>SAMPLE</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -109,6 +122,11 @@ const styles = StyleSheet.create({
     fontSize: 88,
     marginTop: -6,
     textAlign: 'center',
+  },
+  emojiCompact: {
+    fontSize: 28,
+    lineHeight: 34,
+    marginTop: 0,
   },
   caption: {
     backgroundColor: 'rgba(255, 255, 255, 0.82)',

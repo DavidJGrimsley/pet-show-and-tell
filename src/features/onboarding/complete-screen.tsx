@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getReadableTextColor } from '../../theme/color-utils';
 import { useAppTheme } from '../../theme/provider';
+import { Container } from '../../components/Container';
 import { markOnboardingComplete } from '../onboarding-state/onboarding-state';
 import { onboardingConfig } from './onboarding-config';
 
@@ -38,48 +39,50 @@ export default function OnboardingCompleteScreen() {
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}
       style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.panel,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.primary,
-            borderRadius: theme.layout.radius,
-          },
-        ]}>
-        <Text style={[styles.kicker, { color: colors.primary }]}>
-          {onboardingConfig.completion.mode}
-        </Text>
-        <Text
+      <Container>
+        <View
           style={[
-            styles.title,
+            styles.panel,
             {
-              color: colors.text,
-              fontFamily: theme.typography.fontTitle,
+              backgroundColor: colors.surface,
+              borderColor: colors.primary,
+              borderRadius: theme.layout.radius,
             },
           ]}>
-          {onboardingConfig.completeTitle}
-        </Text>
-        <Text style={[styles.body, { color: colors.text }]}>{onboardingConfig.completeBody}</Text>
-        <Text style={[styles.helper, { color: colors.text }]}>
-          {onboardingConfig.completion.helperText}
-        </Text>
-        {completionError ? (
-          <Text style={[styles.errorText, { color: colors.warning }]}>{completionError}</Text>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          disabled={isSaving}
-          onPress={() => void finishOnboarding()}
-          style={[
-            styles.primaryButton,
-            { backgroundColor: colors.primary, borderRadius: theme.layout.radius },
-          ]}>
-          <Text style={[styles.primaryButtonText, { color: primaryForeground }]}>
-            {isSaving ? 'Completing...' : onboardingConfig.completion.label}
+          <Text style={[styles.kicker, { color: colors.primary }]}>
+            {onboardingConfig.completion.mode}
           </Text>
-        </Pressable>
-      </View>
+          <Text
+            style={[
+              styles.title,
+              {
+                color: colors.text,
+                fontFamily: theme.typography.fontTitle,
+              },
+            ]}>
+            {onboardingConfig.completeTitle}
+          </Text>
+          <Text style={[styles.body, { color: colors.text }]}>{onboardingConfig.completeBody}</Text>
+          <Text style={[styles.helper, { color: colors.text }]}>
+            {onboardingConfig.completion.helperText}
+          </Text>
+          {completionError ? (
+            <Text style={[styles.errorText, { color: colors.warning }]}>{completionError}</Text>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSaving}
+            onPress={() => void finishOnboarding()}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: colors.primary, borderRadius: theme.layout.radius },
+            ]}>
+            <Text style={[styles.primaryButtonText, { color: primaryForeground }]}>
+              {isSaving ? 'Completing...' : onboardingConfig.completion.label}
+            </Text>
+          </Pressable>
+        </View>
+      </Container>
     </ScrollView>
   );
 }
@@ -91,14 +94,13 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    paddingVertical: 20,
     paddingTop: 28,
   },
   panel: {
     alignSelf: 'center',
     borderWidth: 1,
     gap: 12,
-    maxWidth: 760,
     padding: 18,
     width: '100%',
   },

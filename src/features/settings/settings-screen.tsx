@@ -10,6 +10,7 @@ import { usePetStore } from '../pets/pet-store';
 
 import { getReadableTextColor } from '../../theme/color-utils';
 import { useAppTheme } from '../../theme/provider';
+import { Container } from '../../components/Container';
 import {
   buildSettingsLinkItems,
   performSettingsSignOut,
@@ -107,81 +108,32 @@ export default function SettingsScreen({ auth, legalUrls, profileHref }: Setting
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}
       style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.panel,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.primary,
-            borderRadius: theme.layout.radius,
-          },
-        ]}>
-        <View style={styles.header}>
-          <Text
-            style={[
-              styles.title,
-              {
-                color: colors.text,
-                fontFamily: theme.typography.fontTitle,
-              },
-            ]}>
-            Settings
-          </Text>
-          <Text style={[styles.body, { color: colors.text }]}>
-            Review account details, legal documents, and release information in one place.
-          </Text>
-        </View>
-
+      <Container>
         <View
           style={[
-            styles.card,
+            styles.panel,
             {
-              backgroundColor: colors.background,
+              backgroundColor: colors.surface,
               borderColor: colors.primary,
               borderRadius: theme.layout.radius,
             },
           ]}>
-          <Text style={[styles.sectionLabel, { color: colors.primary }]}>Account</Text>
-          <Text style={[styles.accountTitle, { color: colors.text }]}>
-            {user?.name?.trim() || user?.email?.trim() || 'Signed-out preview'}
-          </Text>
-          <Text style={[styles.accountMeta, { color: colors.text }]}>
-            {user?.email?.trim() || 'No authenticated session is active.'}
-          </Text>
-          <Text style={[styles.accountMeta, { color: colors.text }]}>
-            Provider: {user?.provider || auth.provider}
-          </Text>
-        </View>
-
-        {links.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.primary }]}>Links</Text>
-            <View style={styles.linkStack}>
-              {links.map((item) => (
-                <Pressable
-                  key={item.id}
-                  accessibilityRole="button"
-                  onPress={() => void openSettingsHref(item.href, router.push)}
-                  style={[
-                    styles.linkCard,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: colors.primary,
-                      borderRadius: theme.layout.radius,
-                    },
-                  ]}>
-                  <Text style={[styles.linkLabel, { color: colors.text }]}>{item.label}</Text>
-                  <Text style={[styles.linkDescription, { color: colors.text }]}>
-                    {item.description}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+          <View style={styles.header}>
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: colors.text,
+                  fontFamily: theme.typography.fontTitle,
+                },
+              ]}>
+              Settings
+            </Text>
+            <Text style={[styles.body, { color: colors.text }]}>
+              Review account details, legal documents, and release information in one place.
+            </Text>
           </View>
-        ) : null}
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.primary }]}>App info</Text>
           <View
             style={[
               styles.card,
@@ -191,57 +143,111 @@ export default function SettingsScreen({ auth, legalUrls, profileHref }: Setting
                 borderRadius: theme.layout.radius,
               },
             ]}>
+            <Text style={[styles.sectionLabel, { color: colors.primary }]}>Account</Text>
             <Text style={[styles.accountTitle, { color: colors.text }]}>
-              Version {versionInfo.version}
+              {user?.name?.trim() || user?.email?.trim() || 'Signed-out preview'}
             </Text>
-            {versionInfo.build ? (
-              <Text style={[styles.accountMeta, { color: colors.text }]}>
-                Build {versionInfo.build}
-              </Text>
-            ) : null}
+            <Text style={[styles.accountMeta, { color: colors.text }]}>
+              {user?.email?.trim() || 'No authenticated session is active.'}
+            </Text>
+            <Text style={[styles.accountMeta, { color: colors.text }]}>
+              Provider: {user?.provider || auth.provider}
+            </Text>
           </View>
-        </View>
 
-        <View style={styles.actions}>
-          {Platform.OS === 'web' ? (
+          {links.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: colors.primary }]}>Links</Text>
+              <View style={styles.linkStack}>
+                {links.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    accessibilityRole="button"
+                    onPress={() => void openSettingsHref(item.href, router.push)}
+                    style={[
+                      styles.linkCard,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.primary,
+                        borderRadius: theme.layout.radius,
+                      },
+                    ]}>
+                    <Text style={[styles.linkLabel, { color: colors.text }]}>{item.label}</Text>
+                    <Text style={[styles.linkDescription, { color: colors.text }]}>
+                      {item.description}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.primary }]}>App info</Text>
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.primary,
+                  borderRadius: theme.layout.radius,
+                },
+              ]}>
+              <Text style={[styles.accountTitle, { color: colors.text }]}>
+                Version {versionInfo.version}
+              </Text>
+              {versionInfo.build ? (
+                <Text style={[styles.accountMeta, { color: colors.text }]}>
+                  Build {versionInfo.build}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.actions}>
+            {Platform.OS === 'web' ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={isRestoring}
+                onPress={() => void handleRestorePreview()}
+                style={[
+                  styles.primaryButton,
+                  {
+                    backgroundColor: colors.primary,
+                    borderRadius: theme.layout.radius,
+                    opacity: isRestoring ? 0.7 : 1,
+                  },
+                ]}>
+                <Text style={[styles.primaryButtonText, { color: primaryForeground }]}>
+                  {isRestoring ? 'Restoring sample pets...' : 'Restore sample pets'}
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
-              disabled={isRestoring}
-              onPress={() => void handleRestorePreview()}
+              disabled={!user || isSigningOut}
+              onPress={() => void handleSignOut()}
               style={[
                 styles.primaryButton,
                 {
-                  backgroundColor: colors.primary,
+                  backgroundColor: user ? colors.warning : colors.surface,
                   borderRadius: theme.layout.radius,
-                  opacity: isRestoring ? 0.7 : 1,
+                  opacity: !user || isSigningOut ? 0.7 : 1,
                 },
               ]}>
-              <Text style={[styles.primaryButtonText, { color: primaryForeground }]}>
-                {isRestoring ? 'Restoring sample pets...' : 'Restore sample pets'}
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: user ? dangerForeground : colors.text },
+                ]}>
+                {isSigningOut ? 'Signing out...' : 'Sign Out'}
               </Text>
             </Pressable>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            disabled={!user || isSigningOut}
-            onPress={() => void handleSignOut()}
-            style={[
-              styles.primaryButton,
-              {
-                backgroundColor: user ? colors.warning : colors.surface,
-                borderRadius: theme.layout.radius,
-                opacity: !user || isSigningOut ? 0.7 : 1,
-              },
-            ]}>
-            <Text
-              style={[styles.primaryButtonText, { color: user ? dangerForeground : colors.text }]}>
-              {isSigningOut ? 'Signing out...' : 'Sign Out'}
-            </Text>
-          </Pressable>
-        </View>
+          </View>
 
-        {notice ? <Text style={[styles.notice, { color: colors.text }]}>{notice}</Text> : null}
-      </View>
+          {notice ? <Text style={[styles.notice, { color: colors.text }]}>{notice}</Text> : null}
+        </View>
+      </Container>
     </ScrollView>
   );
 }
@@ -253,13 +259,12 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    paddingVertical: 20,
   },
   panel: {
     alignSelf: 'center',
     borderWidth: 1,
     gap: 18,
-    maxWidth: 760,
     padding: 18,
     width: '100%',
   },

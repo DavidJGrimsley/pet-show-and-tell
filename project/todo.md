@@ -11,6 +11,7 @@ Add defects only as `- [ ] [Bug · Origin: Phase N] <concrete defect>`; do not d
 - [x] Review `project/` product, technical, and style notes; resolve all optional context markers.
 - [x] Review the Stylist page and confirm the warm neutral, green, and coral visual direction in `project/style.md` and `project/theme.json`.
 - [x] Review and remove the unused CESS exposition routes, tutorial screens, and demo task adapter; keep the active pet routes and database.
+  - PR: [#1 Remove unused CESS exposition scaffolding](https://github.com/DavidJGrimsley/pet-show-and-tell/pull/1)
 - [x] Upgrade Expo stepwise from the generated SDK to SDK 58; update the versioned guidance and Expo-compatible dependencies.
 - [x] Defer EAS and release setup; this milestone targets local Android Expo Go only.
 

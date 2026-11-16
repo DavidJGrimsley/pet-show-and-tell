@@ -21,13 +21,13 @@ const uploadPath = path.join(appRoot, 'assets', 'images', 'pets', 'Tippy.jpeg');
 
 const PET_NAMES = ['Nora', 'Mia', 'Mrs Frizzle', 'Nala', "Lil' Mama", 'Louie', 'Tippy'];
 const CAPTIONS = [
-  'A cozy moment with Nora.',
-  'A little moment with Mia.',
-  'Meet Mrs Frizzle.',
-  'Meet Nala.',
-  "A moment with Lil' Mama.",
-  'Happy wiggles and sunny smiles.',
-  'A moment with Louie.',
+  'What a cozy girl.',
+  'Is that a smile?',
+  'Coming right at ya.',
+  'Beware of the beauty.',
+  'Always wanting belly rubs',
+  'Right before she ran away.',
+  'My what a big mouth you have, Grandma.',
   'Another moment with Louie.',
   'A moment with Tippy.',
 ];

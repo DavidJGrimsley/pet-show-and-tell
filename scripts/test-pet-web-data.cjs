@@ -89,10 +89,33 @@ async function main() {
   assert.ok(snapshot.pets.some((item) => item.id === pet.id && item.name === 'Biscuit'));
   assert.ok(snapshot.posts.some((item) => item.id === post.id && item.caption === post.caption));
 
+  await assert.rejects(
+    api.saveLocalPetProfile({
+      name: 'No Photo',
+      species: 'Dog',
+      photoUri: '',
+      personality: 'Missing photo',
+    })
+  );
+  await assert.rejects(api.deleteLocalPetPost('post-mia-1'));
+  await api.saveLocalReaction(post.id, 'like');
+  await api.deleteLocalPetPost(post.id);
+  snapshot = await api.getPetSnapshot();
+  assert.equal(
+    snapshot.posts.some((item) => item.id === post.id),
+    false
+  );
+  assert.equal(snapshot.reactions[post.id], undefined);
+  const keptPost = await api.createLocalPetPost({
+    petId: pet.id,
+    photoUri: pet.photoUri,
+    caption: 'Biscuit found a sunbeam.',
+  });
+
   api = loadDatabase();
   snapshot = await api.getPetSnapshot();
   assert.ok(snapshot.pets.some((item) => item.id === pet.id));
-  assert.ok(snapshot.posts.some((item) => item.id === post.id));
+  assert.ok(snapshot.posts.some((item) => item.id === keptPost.id));
 
   await api.resetPetDatabase();
   snapshot = await api.getPetSnapshot();
@@ -102,6 +125,106 @@ async function main() {
     snapshot.pets.some((item) => item.id === pet.id),
     false
   );
+
+  // Migrate a persisted pre-change sessionStorage snapshot while preserving custom user data.
+  const preChangeBacking = installSessionStorage();
+  const preChangeSnapshot = {
+    pets: [
+      ...seed.INITIAL_SEEDED_PETS.map((item) => {
+        if (item.id === 'pet-mia' || item.id === 'pet-tippy') {
+          return { ...item, isUserPet: true };
+        }
+        if (item.id === 'pet-mrs-frizzle') {
+          return { ...item, photoUri: 'asset:Mrs Frizzle.jpeg' };
+        }
+        return { ...item };
+      }),
+      {
+        id: 'pet-user-custom',
+        name: 'Maple',
+        species: 'Cat',
+        photoUri: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+        personality: 'Loves boxes.',
+        createdAt: '2026-11-07T10:00:00.000Z',
+        isUserPet: true,
+      },
+    ],
+    posts: [
+      ...seed.INITIAL_SEEDED_POSTS.map((item) => {
+        if (item.id === 'post-nora-1') {
+          return { ...item, caption: 'A cozy moment with Nora.' };
+        }
+        if (item.id === 'post-mia-1') {
+          return { ...item, caption: 'User edited Mia caption' };
+        }
+        if (item.id === 'post-mrs-frizzle-1') {
+          return {
+            ...item,
+            photoUri: 'asset:Mrs Frizzle.jpeg',
+            caption: 'Meet Mrs Frizzle.',
+          };
+        }
+        if (item.id === 'post-lil-mama-2') {
+          return { ...item, caption: 'Right before she ran away' };
+        }
+        if (item.id === 'post-louie-1') {
+          return { ...item, photoUri: 'data:image/custom-louie', caption: 'A moment with Louie.' };
+        }
+        return { ...item };
+      }),
+      {
+        id: 'post-local-custom',
+        petId: 'pet-user-custom',
+        photoUri: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+        caption: 'Maple in a shoebox.',
+        createdAt: '2026-11-07T11:00:00.000Z',
+      },
+    ],
+    reactions: {
+      'post-local-custom': 'love',
+    },
+  };
+  preChangeBacking.set('pet-show-and-tell.preview.v1', JSON.stringify(preChangeSnapshot));
+
+  api = loadDatabase();
+  snapshot = await api.getPetSnapshot();
+  assert.equal(snapshot.pets.find((item) => item.id === 'pet-mia').isUserPet, false);
+  assert.equal(snapshot.pets.find((item) => item.id === 'pet-tippy').isUserPet, false);
+  assert.equal(
+    snapshot.pets.find((item) => item.id === 'pet-mrs-frizzle').photoUri,
+    'asset:Mrs Frizzle.jpg'
+  );
+  assert.equal(
+    snapshot.posts.find((item) => item.id === 'post-mrs-frizzle-1').photoUri,
+    'asset:Mrs Frizzle.jpg'
+  );
+  assert.equal(
+    snapshot.posts.find((item) => item.id === 'post-mrs-frizzle-1').caption,
+    'Coming right at ya.'
+  );
+  assert.equal(
+    snapshot.posts.find((item) => item.id === 'post-nora-1').caption,
+    'What a cozy girl.'
+  );
+  assert.equal(
+    snapshot.posts.find((item) => item.id === 'post-mia-1').caption,
+    'User edited Mia caption'
+  );
+  assert.equal(
+    snapshot.posts.find((item) => item.id === 'post-lil-mama-2').caption,
+    'Right before she ran away.'
+  );
+  assert.equal(
+    snapshot.posts.find((item) => item.id === 'post-louie-1').photoUri,
+    'data:image/custom-louie'
+  );
+  assert.equal(
+    snapshot.posts.find((item) => item.id === 'post-louie-1').caption,
+    'My what a big mouth you have, Grandma.'
+  );
+  assert.ok(snapshot.pets.some((item) => item.id === 'pet-user-custom' && item.name === 'Maple'));
+  assert.ok(snapshot.posts.some((item) => item.id === 'post-local-custom'));
+  assert.equal(snapshot.reactions['post-local-custom'], 'love');
 
   installSessionStorage({
     getItem() {

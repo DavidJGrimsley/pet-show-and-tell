@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { Container } from '../../components/Container';
 import { PetArtwork } from '../../components/pet-artwork';
 import { copyPetImageIntoAppStorage } from '../../services/pet-image-storage';
 import { usePetStore } from './pet-store';
@@ -48,7 +49,7 @@ export default function CreatePostScreen() {
     setError(null);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setError('Photo access is off. You can use the sample picture or try again in Settings.');
+      setError('Photo access is off. Tap "Use pet photo" or try again in Settings.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -67,7 +68,7 @@ export default function CreatePostScreen() {
       return;
     }
     if (!pickedUri) {
-      setError('Choose a picture or use the sample picture before sharing.');
+      setError('Choose a picture or tap "Use pet photo" before sharing.');
       return;
     }
     if (!caption.trim()) {
@@ -141,121 +142,142 @@ export default function CreatePostScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       style={styles.screen}>
-      <View style={styles.intro}>
-        <Text style={styles.eyebrow}>A MOMENT WITH {pet.name.toUpperCase()}</Text>
-        <Text style={styles.title}>Share a pet moment</Text>
-        <Text style={styles.subtitle}>This post stays on this device in the demo feed.</Text>
-      </View>
+      <Container>
+        <View style={styles.innerContainer}>
+          <View style={styles.intro}>
+            <Text style={styles.eyebrow}>A MOMENT WITH {pet.name.toUpperCase()}</Text>
+            <Text style={styles.title}>Share a pet moment</Text>
+            <Text style={styles.subtitle}>This post stays on this device in the demo feed.</Text>
+          </View>
 
-      {ownedPets.length > 1 ? (
-        <View style={styles.petSelectorContainer}>
-          <Text style={styles.petSelectorLabel}>Choose which pet you are posting for:</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.petSelectorScroll}
-            style={styles.boundedScroll}>
-            {ownedPets.map((p) => {
-              const isSelected = p.id === pet.id;
-              return (
+          {ownedPets.length > 1 ? (
+            <View style={styles.petSelectorContainer}>
+              <Text style={styles.petSelectorLabel}>Choose which pet you are posting for:</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.petSelectorScroll}
+                style={styles.boundedScroll}>
+                {ownedPets.map((p) => {
+                  const isSelected = p.id === pet.id;
+                  return (
+                    <Pressable
+                      key={p.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={'Select ' + p.name}
+                      onPress={() => {
+                        setSelectedPetId(p.id);
+                      }}
+                      style={[
+                        styles.petSelectorChip,
+                        isSelected ? styles.petSelectorChipActive : null,
+                      ]}>
+                      <View style={styles.petSelectorAvatarWrap}>
+                        <PetArtwork
+                          aspectRatio={1}
+                          name={p.name}
+                          photoUri={p.photoUri}
+                          species={p.species}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          styles.petSelectorChipText,
+                          isSelected ? styles.petSelectorChipTextActive : null,
+                        ]}>
+                        {p.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
                 <Pressable
-                  key={p.id}
                   accessibilityRole="button"
-                  accessibilityLabel={'Select ' + p.name}
-                  onPress={() => {
-                    setSelectedPetId(p.id);
-                  }}
-                  style={[
-                    styles.petSelectorChip,
-                    isSelected ? styles.petSelectorChipActive : null,
-                  ]}>
-                  <View style={styles.petSelectorAvatarWrap}>
-                    <PetArtwork
-                      aspectRatio={1}
-                      name={p.name}
-                      photoUri={p.photoUri}
-                      species={p.species}
-                    />
+                  accessibilityLabel="Add another pet"
+                  onPress={() => router.push('/pet-setup')}
+                  style={styles.addPetChip}>
+                  <View style={styles.addPetChipIconWrap}>
+                    <Text style={styles.addPetChipIcon}>＋</Text>
                   </View>
-                  <Text
-                    style={[
-                      styles.petSelectorChipText,
-                      isSelected ? styles.petSelectorChipTextActive : null,
-                    ]}>
-                    {p.name}
-                  </Text>
+                  <Text style={styles.addPetChipText}>Add pet</Text>
                 </Pressable>
-              );
-            })}
-          </ScrollView>
+              </ScrollView>
+            </View>
+          ) : null}
+
+          <View style={styles.previewContainer}>
+            <View style={styles.previewWrapper}>
+              <PetArtwork
+                aspectRatio={1.18}
+                name={pet.name}
+                photoUri={previewUri}
+                species={pet.species}
+              />
+            </View>
+          </View>
+
+          <View style={styles.photoActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void choosePhoto()}
+              style={styles.secondaryButton}>
+              <Text style={styles.secondaryText}>Choose another photo</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setPickedUri(pet.photoUri || 'seed:user-post');
+                setError(null);
+              }}
+              style={styles.sampleButton}>
+              <Text style={styles.sampleText}>Use pet photo</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Caption</Text>
+            <TextInput
+              accessibilityLabel="Post caption"
+              maxLength={180}
+              multiline
+              onChangeText={setCaption}
+              placeholder={'A little story about ' + pet.name}
+              placeholderTextColor="#89948d"
+              style={styles.input}
+              value={caption}
+            />
+            <Text style={styles.counter}>{caption.length}/180</Text>
+          </View>
+
+          <View style={styles.privacyNote}>
+            <Text style={styles.privacyIcon}>🔒</Text>
+            <Text style={styles.privacyText}>
+              Your photo and post are saved locally and are not uploaded.
+            </Text>
+          </View>
+
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSaving}
+            onPress={() => void sharePost()}
+            style={[styles.primaryButton, isSaving ? styles.disabledButton : null]}>
+            <Text style={styles.primaryText}>
+              {isSaving ? 'Saving your moment…' : 'Add to the feed'}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.replace('/')}
+            style={styles.cancelButton}>
+            <Text style={styles.cancelText}>Not right now</Text>
+          </Pressable>
         </View>
-      ) : null}
-
-      <PetArtwork aspectRatio={1.18} name={pet.name} photoUri={previewUri} species={pet.species} />
-
-      <View style={styles.photoActions}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void choosePhoto()}
-          style={styles.secondaryButton}>
-          <Text style={styles.secondaryText}>
-            {pickedUri ? 'Choose another photo' : 'Choose a photo'}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            setPickedUri(pet.photoUri || 'seed:user-post');
-            setError(null);
-          }}
-          style={styles.sampleButton}>
-          <Text style={styles.sampleText}>Use pet photo</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>Caption</Text>
-        <TextInput
-          accessibilityLabel="Post caption"
-          maxLength={180}
-          multiline
-          onChangeText={setCaption}
-          placeholder={'A little story about ' + pet.name}
-          placeholderTextColor="#89948d"
-          style={styles.input}
-          value={caption}
-        />
-        <Text style={styles.counter}>{caption.length}/180</Text>
-      </View>
-
-      <View style={styles.privacyNote}>
-        <Text style={styles.privacyIcon}>🔒</Text>
-        <Text style={styles.privacyText}>
-          Your photo and post are saved locally and are not uploaded.
-        </Text>
-      </View>
-
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={isSaving}
-        onPress={() => void sharePost()}
-        style={[styles.primaryButton, isSaving ? styles.disabledButton : null]}>
-        <Text style={styles.primaryText}>
-          {isSaving ? 'Saving your moment…' : 'Add to the feed'}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.replace('/')}
-        style={styles.cancelButton}>
-        <Text style={styles.cancelText}>Not right now</Text>
-      </Pressable>
+      </Container>
     </ScrollView>
   );
 }
@@ -266,9 +288,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    paddingBottom: 38,
+  },
+  innerContainer: {
     gap: 13,
     padding: 18,
-    paddingBottom: 38,
+    width: '100%',
   },
   loading: {
     alignItems: 'center',
@@ -352,10 +377,47 @@ const styles = StyleSheet.create({
     color: '#1f4831',
     fontWeight: '900',
   },
+  addPetChip: {
+    alignItems: 'center',
+    backgroundColor: '#f6f5ee',
+    borderColor: '#d0ddd0',
+    borderRadius: 14,
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  addPetChipIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
+    height: 24,
+  },
+  addPetChipIcon: {
+    color: '#396e55',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  addPetChipText: {
+    color: '#396e55',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  previewContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  previewWrapper: {
+    width: '25%',
+  },
   photoActions: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
+    justifyContent: 'center',
   },
   secondaryButton: {
     alignItems: 'center',
