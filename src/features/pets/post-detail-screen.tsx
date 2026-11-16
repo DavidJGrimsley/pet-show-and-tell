@@ -1,10 +1,18 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { Container } from '../../components/Container';
 import { PetArtwork } from '../../components/pet-artwork';
-import type { ReactionKind } from '../../types/pet';
+import { MAX_COMMENT_LENGTH, type ReactionKind, normalizeCommentBody } from '../../types/pet';
 import { usePetStore } from './pet-store';
 
 export default function PostDetailScreen() {
@@ -17,15 +25,30 @@ export default function PostDetailScreen() {
   const pets = usePetStore((state) => state.pets);
   const posts = usePetStore((state) => state.posts);
   const reactions = usePetStore((state) => state.reactions);
+  const allComments = usePetStore((state) => state.comments);
+  const commentReactions = usePetStore((state) => state.commentReactions);
   const refresh = usePetStore((state) => state.refresh);
   const toggleReaction = usePetStore((state) => state.toggleReaction);
+  const addComment = usePetStore((state) => state.addComment);
+  const toggleCommentReaction = usePetStore((state) => state.toggleCommentReaction);
   const deletePost = usePetStore((state) => state.deletePost);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [commentComposer, setCommentComposer] = useState<{
+    postId: string;
+    draft: string;
+    error: string | null;
+  }>({ postId, draft: '', error: null });
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const post = posts.find((item) => item.id === postId);
   const pet = pets.find((item) => item.id === post?.petId);
   const reaction = reactions[postId];
+  const postComments = allComments.filter((item) => item.postId === postId);
+  const commentDraft = commentComposer.postId === postId ? commentComposer.draft : '';
+  const commentError = commentComposer.postId === postId ? commentComposer.error : null;
+  const trimmedCommentLength = commentDraft.trim().length;
+  const isCommentOverLimit = trimmedCommentLength > MAX_COMMENT_LENGTH;
 
   useEffect(() => {
     if (!isHydrated) {
@@ -83,6 +106,56 @@ export default function PostDetailScreen() {
     void toggleReaction(post.id, kind).catch(() => undefined);
   };
 
+  const reactToComment = (commentId: string, kind: ReactionKind) => {
+    void toggleCommentReaction(commentId, kind).catch(() => undefined);
+  };
+
+  const submitComment = async () => {
+    if (isSubmittingComment) {
+      return;
+    }
+    let trimmedBody: string;
+    try {
+      trimmedBody = normalizeCommentBody(commentDraft);
+    } catch (validationError) {
+      setCommentComposer({
+        postId,
+        draft: commentDraft,
+        error:
+          validationError instanceof Error
+            ? validationError.message
+            : 'Write a comment before posting.',
+      });
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    setCommentComposer({ postId, draft: commentDraft, error: null });
+    try {
+      await addComment({ postId: post.id, body: trimmedBody });
+      setCommentComposer({ postId, draft: '', error: null });
+    } catch (saveError) {
+      setCommentComposer({
+        postId,
+        draft: commentDraft,
+        error:
+          saveError instanceof Error
+            ? saveError.message
+            : 'Your comment could not be saved. Try again.',
+      });
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const formatCommentTimestamp = (iso: string) =>
+    new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(iso));
+
   const handleDelete = async () => {
     if (!pet.isUserPet || isDeleting) {
       return;
@@ -108,6 +181,7 @@ export default function PostDetailScreen() {
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
       style={styles.screen}>
       <Container>
         <View style={styles.innerContainer}>
@@ -147,6 +221,7 @@ export default function PostDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel={'Like ' + pet.name + "'s post"}
               accessibilityState={{ selected: reaction === 'like' }}
+              aria-selected={reaction === 'like'}
               onPress={() => react('like')}
               style={[styles.reaction, reaction === 'like' ? styles.likeSelected : null]}>
               <Text style={styles.reactionEmoji}>👍</Text>
@@ -158,6 +233,7 @@ export default function PostDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel={'Love ' + pet.name + "'s post"}
               accessibilityState={{ selected: reaction === 'love' }}
+              aria-selected={reaction === 'love'}
               onPress={() => react('love')}
               style={[styles.reaction, reaction === 'love' ? styles.loveSelected : null]}>
               <Text style={styles.reactionEmoji}>💚</Text>
@@ -170,9 +246,129 @@ export default function PostDetailScreen() {
           <View style={styles.localNote}>
             <Text style={styles.localNoteEmoji}>🔒</Text>
             <Text style={styles.localNoteText}>
-              Your reaction is saved on this device. This demo does not publish activity to a public
-              service.
+              Your reactions and comments are saved on this device. This demo does not publish
+              activity to a public service.
             </Text>
+          </View>
+
+          <View style={styles.commentsSection}>
+            <View style={styles.commentsHeader}>
+              <Text style={styles.commentsHeading}>Comments</Text>
+              <Text style={styles.commentsCount}>
+                {postComments.length} {postComments.length === 1 ? 'comment' : 'comments'}
+              </Text>
+            </View>
+
+            <View style={styles.composerCard}>
+              <Text style={styles.commentInputLabel}>Add a comment</Text>
+              <TextInput
+                accessibilityLabel="Add a comment"
+                multiline
+                onChangeText={(value) => {
+                  setCommentComposer({ postId, draft: value, error: null });
+                }}
+                placeholder={'Leave a friendly note for ' + pet.name}
+                placeholderTextColor="#89948d"
+                style={styles.commentInput}
+                value={commentDraft}
+              />
+              <View style={styles.composerFooter}>
+                <Text
+                  accessibilityLabel={
+                    trimmedCommentLength + ' of ' + MAX_COMMENT_LENGTH + ' characters'
+                  }
+                  style={[
+                    styles.commentCounter,
+                    isCommentOverLimit ? styles.commentCounterOver : null,
+                  ]}>
+                  {trimmedCommentLength}/{MAX_COMMENT_LENGTH}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Post comment"
+                  accessibilityState={{ disabled: isSubmittingComment }}
+                  disabled={isSubmittingComment}
+                  onPress={() => void submitComment()}
+                  style={[
+                    styles.postCommentButton,
+                    isSubmittingComment ? styles.disabledButton : null,
+                  ]}>
+                  <Text style={styles.postCommentButtonText}>
+                    {isSubmittingComment ? 'Posting…' : 'Post comment'}
+                  </Text>
+                </Pressable>
+              </View>
+              {commentError ? (
+                <Text accessibilityRole="alert" style={styles.commentError}>
+                  {commentError}
+                </Text>
+              ) : null}
+            </View>
+
+            {postComments.length === 0 ? (
+              <View style={styles.emptyCommentsCard}>
+                <Text style={styles.emptyCommentsTitle}>No comments yet</Text>
+                <Text style={styles.emptyCommentsBody}>
+                  Be the first to share a kind note on {pet.name}&apos;s moment.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.commentList}>
+                {postComments.map((comment) => {
+                  const commentReaction = commentReactions[comment.id];
+                  return (
+                    <View key={comment.id} style={styles.commentCard}>
+                      <Text selectable style={styles.commentBody}>
+                        {comment.body}
+                      </Text>
+                      <Text style={styles.commentTimestamp}>
+                        {formatCommentTimestamp(comment.createdAt)}
+                      </Text>
+                      <View style={styles.commentReactions}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={'Like comment: ' + comment.body}
+                          accessibilityState={{ selected: commentReaction === 'like' }}
+                          aria-selected={commentReaction === 'like'}
+                          onPress={() => reactToComment(comment.id, 'like')}
+                          style={[
+                            styles.commentReactionButton,
+                            commentReaction === 'like' ? styles.likeSelected : null,
+                          ]}>
+                          <Text style={styles.commentReactionEmoji}>👍</Text>
+                          <Text
+                            style={[
+                              styles.commentReactionText,
+                              commentReaction === 'like' ? styles.activeText : null,
+                            ]}>
+                            Like
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={'Love comment: ' + comment.body}
+                          accessibilityState={{ selected: commentReaction === 'love' }}
+                          aria-selected={commentReaction === 'love'}
+                          onPress={() => reactToComment(comment.id, 'love')}
+                          style={[
+                            styles.commentReactionButton,
+                            commentReaction === 'love' ? styles.loveSelected : null,
+                          ]}>
+                          <Text style={styles.commentReactionEmoji}>💚</Text>
+                          <Text
+                            style={[
+                              styles.commentReactionText,
+                              commentReaction === 'love' ? styles.activeText : null,
+                            ]}>
+                            Love
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
           {pet.isUserPet ? (
             <View style={styles.deleteSection}>
@@ -419,5 +615,152 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '900',
+  },
+  commentsSection: {
+    gap: 12,
+    paddingTop: 4,
+  },
+  commentsHeader: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  commentsHeading: {
+    color: '#263d32',
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  commentsCount: {
+    color: '#68776e',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  composerCard: {
+    backgroundColor: '#ffffff',
+    borderColor: '#dfe5db',
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 8,
+    padding: 14,
+  },
+  commentInputLabel: {
+    color: '#30483a',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  commentInput: {
+    backgroundColor: '#f7f5ef',
+    borderColor: '#dce3d9',
+    borderRadius: 14,
+    borderWidth: 1,
+    color: '#263d32',
+    fontSize: 14,
+    lineHeight: 20,
+    minHeight: 74,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    textAlignVertical: 'top',
+  },
+  composerFooter: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  commentCounter: {
+    color: '#68776e',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  commentCounterOver: {
+    color: '#9f3428',
+  },
+  postCommentButton: {
+    alignItems: 'center',
+    backgroundColor: '#386c54',
+    borderRadius: 16,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  disabledButton: {
+    opacity: 0.62,
+  },
+  postCommentButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  commentError: {
+    color: '#9f3428',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  emptyCommentsCard: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#e8e9df',
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 5,
+    padding: 18,
+  },
+  emptyCommentsTitle: {
+    color: '#30483a',
+    fontSize: 15,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  emptyCommentsBody: {
+    color: '#68776e',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  commentList: {
+    gap: 10,
+  },
+  commentCard: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e8e9df',
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 8,
+    padding: 14,
+  },
+  commentBody: {
+    color: '#263d32',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  commentTimestamp: {
+    color: '#68776e',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  commentReactions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 2,
+  },
+  commentReactionButton: {
+    alignItems: 'center',
+    borderColor: '#dfe5db',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  commentReactionEmoji: {
+    fontSize: 15,
+  },
+  commentReactionText: {
+    color: '#506057',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

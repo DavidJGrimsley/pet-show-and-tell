@@ -27,8 +27,8 @@ Add defects only as `- [ ] [Bug · Origin: Phase N] <concrete defect>`; do not d
 - [x] Add typed pet, post, and reaction models plus six seeded pets and eight posts in `src/data/pet-seed.ts`.
 - [x] Persist the local pet profile, posts, and Like/Love reactions with Expo SQLite in `src/storage/pet-database.ts`.
 - [x] Connect screens to shared Zustand state and copy selected photos into app-owned local storage.
-- [ ] Add a local comments table and typed comment actions in `src/storage/pet-database.ts` and `src/features/pets/pet-store.ts`; verify a saved comment appears after reopening a post.
-- [ ] Add a comment list and composer to `src/features/pets/post-detail-screen.tsx`; verify empty, populated, and submitted-comment states.
+- [x] Add a local comments table and typed comment actions in `src/storage/pet-database.ts` and `src/features/pets/pet-store.ts`; verify a saved comment appears after reopening a post.
+- [x] Add a comment list and composer to `src/features/pets/post-detail-screen.tsx`; verify empty, populated, and submitted-comment states.
 - [x] Replace the seeded illustrations with bundled pet photos and create a post for each supplied photo.
 
 ## Phase 3 — Complete Product Flows
