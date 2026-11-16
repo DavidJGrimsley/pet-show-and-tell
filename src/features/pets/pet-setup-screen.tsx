@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { Container } from '../../components/Container';
 import { PetArtwork } from '../../components/pet-artwork';
 import { copyPetImageIntoAppStorage } from '../../services/pet-image-storage';
 import type { Pet } from '../../types/pet';
@@ -36,13 +37,16 @@ function SetupForm({ initialPet, isEdit, onSave }: SetupFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const previewUri = pickedUri ?? initialPet?.photoUri ?? 'seed:pet-profile';
+  const isNewPetPlaceholder = !isEdit && !pickedUri && (!initialPet || !initialPet.photoUri);
 
   const choosePhoto = async () => {
     setError(null);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       setError(
-        'Photo access is off. You can save the profile with its illustration and choose a photo later.'
+        isEdit
+          ? 'Photo access is off. You can keep the current photo or allow photo access in Settings.'
+          : 'Photo access is off. Allow photo access in Settings to choose a profile picture.'
       );
       return;
     }
@@ -66,13 +70,18 @@ function SetupForm({ initialPet, isEdit, onSave }: SetupFormProps) {
       setError('Add a pet name, species, and a short personality to continue.');
       return;
     }
+    const existingPhotoUri = isEdit ? initialPet?.photoUri : undefined;
+    if (!pickedUri && !existingPhotoUri) {
+      setError('Choose a profile photo to continue.');
+      return;
+    }
 
     setIsSaving(true);
     setError(null);
     try {
       const photoUri = pickedUri
         ? await copyPetImageIntoAppStorage(pickedUri)
-        : (initialPet?.photoUri ?? 'seed:pet-profile');
+        : (existingPhotoUri ?? '');
       await onSave({ name, species, personality, photoUri });
     } catch (saveError) {
       setError(
@@ -91,96 +100,119 @@ function SetupForm({ initialPet, isEdit, onSave }: SetupFormProps) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       style={styles.screen}>
-      <View style={styles.intro}>
-        <Text style={styles.eyebrow}>{isEdit ? 'UPDATE PROFILE' : 'NEW PET'}</Text>
-        <Text style={styles.title}>
-          {isEdit ? 'Update ' + (name.trim() || 'pet') + "'s profile" : 'Who are we meeting?'}
-        </Text>
-        <Text style={styles.subtitle}>
-          Add a few details so everyone knows who is in the pictures.
-        </Text>
-      </View>
+      <Container>
+        <View style={styles.innerContainer}>
+          <View style={styles.intro}>
+            <Text style={styles.eyebrow}>{isEdit ? 'UPDATE PROFILE' : 'NEW PET'}</Text>
+            <Text style={styles.title}>
+              {isEdit ? 'Update ' + (name.trim() || 'pet') + "'s profile" : 'Who are we meeting?'}
+            </Text>
+            <Text style={styles.subtitle}>
+              Add a few details so everyone knows who is in the pictures.
+            </Text>
+          </View>
 
-      <PetArtwork
-        aspectRatio={1.45}
-        name={name.trim() || 'Your pet'}
-        photoUri={previewUri}
-        species={species.trim() || 'Pet'}
-      />
+          {isNewPetPlaceholder ? (
+            <View style={styles.placeholderArtworkContainer}>
+              <View style={styles.placeholderArtworkWrapper}>
+                <PetArtwork
+                  aspectRatio={1.45}
+                  compact
+                  hideBadges
+                  name={name.trim() || 'Your pet'}
+                  photoUri={previewUri}
+                  species={species.trim() || 'Pet'}
+                />
+              </View>
+            </View>
+          ) : (
+            <PetArtwork
+              aspectRatio={1.45}
+              name={name.trim() || 'Your pet'}
+              photoUri={previewUri}
+              species={species.trim() || 'Pet'}
+            />
+          )}
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => void choosePhoto()}
-        style={styles.photoButton}>
-        <Text style={styles.photoButtonText}>
-          {pickedUri ? 'Choose a different picture' : 'Add a profile picture'}
-        </Text>
-      </Pressable>
-      <Text style={styles.helper}>
-        A picture is optional. The illustration is a placeholder until you choose a photo.
-      </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void choosePhoto()}
+            style={[styles.photoButton, isNewPetPlaceholder ? styles.photoButtonCentered : null]}>
+            <Text style={styles.photoButtonText}>
+              {pickedUri || (isEdit && initialPet?.photoUri)
+                ? 'Choose a different picture'
+                : 'Add a profile picture'}
+            </Text>
+          </Pressable>
+          <Text style={[styles.helper, isNewPetPlaceholder ? styles.helperCentered : null]}>
+            {isEdit
+              ? 'Your current profile photo will be kept unless you choose a new one.'
+              : 'A profile photo is required for your new pet.'}
+          </Text>
 
-      <View style={styles.form}>
-        <View style={styles.field}>
-          <Text style={styles.label}>Pet name</Text>
-          <TextInput
-            accessibilityLabel="Pet name"
-            autoCapitalize="words"
-            maxLength={32}
-            onChangeText={setName}
-            placeholder="For example, Milo"
-            placeholderTextColor="#89948d"
-            returnKeyType="next"
-            style={styles.input}
-            value={name}
-          />
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <Text style={styles.label}>Pet name</Text>
+              <TextInput
+                accessibilityLabel="Pet name"
+                autoCapitalize="words"
+                maxLength={32}
+                onChangeText={setName}
+                placeholder="For example, Milo"
+                placeholderTextColor="#89948d"
+                returnKeyType="next"
+                style={styles.input}
+                value={name}
+              />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>Species</Text>
+              <TextInput
+                accessibilityLabel="Pet species"
+                autoCapitalize="words"
+                maxLength={32}
+                onChangeText={setSpecies}
+                placeholder="Dog, cat, snake, rabbit…"
+                placeholderTextColor="#89948d"
+                returnKeyType="next"
+                style={styles.input}
+                value={species}
+              />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>Personality</Text>
+              <TextInput
+                accessibilityLabel="Pet personality"
+                maxLength={140}
+                multiline
+                onChangeText={setPersonality}
+                placeholder="Favorite things, tiny habits, or a fun fact"
+                placeholderTextColor="#89948d"
+                returnKeyType="default"
+                style={[styles.input, styles.multiline]}
+                value={personality}
+              />
+              <Text style={styles.counter}>{personality.length}/140</Text>
+            </View>
+          </View>
+
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSaving}
+            onPress={() => void submitProfile()}
+            style={[styles.primaryButton, isSaving ? styles.disabledButton : null]}>
+            <Text style={styles.primaryButtonText}>
+              {isSaving ? 'Saving profile…' : isEdit ? 'Save changes' : 'Save pet profile'}
+            </Text>
+          </Pressable>
         </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>Species</Text>
-          <TextInput
-            accessibilityLabel="Pet species"
-            autoCapitalize="words"
-            maxLength={32}
-            onChangeText={setSpecies}
-            placeholder="Dog, cat, snake, rabbit…"
-            placeholderTextColor="#89948d"
-            returnKeyType="next"
-            style={styles.input}
-            value={species}
-          />
-        </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>Personality</Text>
-          <TextInput
-            accessibilityLabel="Pet personality"
-            maxLength={140}
-            multiline
-            onChangeText={setPersonality}
-            placeholder="Favorite things, tiny habits, or a fun fact"
-            placeholderTextColor="#89948d"
-            returnKeyType="default"
-            style={[styles.input, styles.multiline]}
-            value={personality}
-          />
-          <Text style={styles.counter}>{personality.length}/140</Text>
-        </View>
-      </View>
-
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={isSaving}
-        onPress={() => void submitProfile()}
-        style={[styles.primaryButton, isSaving ? styles.disabledButton : null]}>
-        <Text style={styles.primaryButtonText}>
-          {isSaving ? 'Saving profile…' : isEdit ? 'Save changes' : 'Save pet profile'}
-        </Text>
-      </Pressable>
+      </Container>
     </ScrollView>
   );
 }
@@ -274,9 +306,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    paddingBottom: 36,
+  },
+  innerContainer: {
     gap: 12,
     padding: 18,
-    paddingBottom: 36,
+    width: '100%',
   },
   loading: {
     alignItems: 'center',
@@ -315,6 +350,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
   },
+  photoButtonCentered: {
+    alignSelf: 'center',
+  },
   photoButtonText: {
     color: '#355e48',
     fontSize: 12,
@@ -324,6 +362,17 @@ const styles = StyleSheet.create({
     color: '#77847b',
     fontSize: 11,
     lineHeight: 16,
+  },
+  helperCentered: {
+    textAlign: 'center',
+  },
+  placeholderArtworkContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  placeholderArtworkWrapper: {
+    width: '20%',
   },
   form: {
     gap: 12,

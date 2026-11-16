@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getReadableTextColor } from '../../theme/color-utils';
 import { useAppTheme } from '../../theme/provider';
+import { Container } from '../../components/Container';
 import { onboardingConfig } from './onboarding-config';
 
 export default function OnboardingWelcomeScreen() {
@@ -15,55 +16,63 @@ export default function OnboardingWelcomeScreen() {
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.content}
       style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: colors.primary }]}>
-          {onboardingConfig.welcomeEyebrow}
-        </Text>
-        <Text
-          style={[
-            styles.title,
-            {
-              color: colors.text,
-              fontFamily: theme.typography.fontTitle,
-              fontSize: Math.max(28, theme.typography.displaySize),
-            },
-          ]}>
-          {onboardingConfig.appName}
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.text }]}>
-          {onboardingConfig.welcomeTitle}
-        </Text>
-        <Text style={[styles.body, { color: colors.text }]}>{onboardingConfig.welcomeBody}</Text>
-      </View>
-
-      <View style={styles.stack}>
-        {onboardingConfig.valueProps.map((item) => (
-          <View
-            key={item.title}
-            style={[
-              styles.card,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.primary,
-                borderRadius: theme.layout.radius,
-              },
-            ]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>{item.title}</Text>
-            <Text style={[styles.cardBody, { color: colors.text }]}>{item.body}</Text>
+      <Container>
+        <View style={styles.innerContainer}>
+          <View style={styles.header}>
+            <Text style={[styles.eyebrow, { color: colors.primary }]}>
+              {onboardingConfig.welcomeEyebrow}
+            </Text>
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: colors.text,
+                  fontFamily: theme.typography.fontTitle,
+                  fontSize: Math.max(28, theme.typography.displaySize),
+                },
+              ]}>
+              {onboardingConfig.appName}
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.text }]}>
+              {onboardingConfig.welcomeTitle}
+            </Text>
+            <Text style={[styles.body, { color: colors.text }]}>
+              {onboardingConfig.welcomeBody}
+            </Text>
           </View>
-        ))}
-      </View>
 
-      <Link href={onboardingConfig.nextRouteAfterWelcome} asChild>
-        <Pressable
-          accessibilityRole="button"
-          style={StyleSheet.flatten([
-            styles.primaryButton,
-            { backgroundColor: colors.primary, borderRadius: theme.layout.radius },
-          ])}>
-          <Text style={[styles.primaryButtonText, { color: primaryForeground }]}>Get started</Text>
-        </Pressable>
-      </Link>
+          <View style={styles.stack}>
+            {onboardingConfig.valueProps.map((item) => (
+              <View
+                key={item.title}
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.primary,
+                    borderRadius: theme.layout.radius,
+                  },
+                ]}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.cardBody, { color: colors.text }]}>{item.body}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Link href={onboardingConfig.nextRouteAfterWelcome} asChild>
+            <Pressable
+              accessibilityRole="button"
+              style={StyleSheet.flatten([
+                styles.primaryButton,
+                { backgroundColor: colors.primary, borderRadius: theme.layout.radius },
+              ])}>
+              <Text style={[styles.primaryButtonText, { color: primaryForeground }]}>
+                Get started
+              </Text>
+            </Pressable>
+          </Link>
+        </View>
+      </Container>
     </ScrollView>
   );
 }
@@ -74,10 +83,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    gap: 18,
     justifyContent: 'center',
-    padding: 20,
+    paddingVertical: 20,
     paddingTop: 28,
+  },
+  innerContainer: {
+    gap: 18,
+    width: '100%',
   },
   header: {
     gap: 8,

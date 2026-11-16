@@ -76,10 +76,6 @@ function LayoutInner() {
                 name="settings"
                 options={{ presentation: 'modal', title: 'Settings' }}
               />
-              <Stack.Screen name="exposition/index" options={{ title: 'Package Exposition' }} />
-              <Stack.Screen name="exposition/stylist" options={{ title: 'Stylist' }} />
-              <Stack.Screen name="exposition/data" options={{ title: 'Data' }} />
-              <Stack.Screen name="exposition/sdk-56" options={{ title: 'Expo SDK' }} />
             </Stack>
           </RouterThemeBridge>
         </SafeAreaProvider>

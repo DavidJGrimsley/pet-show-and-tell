@@ -168,4 +168,4 @@ Phase 0 records this product and stack boundary. Phase 1 builds the app shell, o
 - Decision: confirmed
 
 ## Ejection Inventory
-- Decision: not applicable; the MDS ejection inventory is absent for this scaffold. Retain the existing onboarding, settings, data, exposition, and Stylist tutorial routes for this milestone, then revisit cleanup if the project moves toward release.
+- Decision: not applicable; an MDS ejection inventory was not generated for this scaffold. The unused CESS exposition/Stylist tutorials and task demo adapter were removed during cleanup; the live onboarding, Settings, and pet data routes remain.

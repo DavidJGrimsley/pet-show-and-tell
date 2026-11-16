@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { Container } from '../../components/Container';
 import { PetArtwork } from '../../components/pet-artwork';
 import { usePetStore } from './pet-store';
 import { PetPostCard } from './pet-post-card';
@@ -81,147 +82,153 @@ export default function MyPetScreen() {
       ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
       keyExtractor={(item) => item.id}
       ListEmptyComponent={
-        <View style={styles.empty}>
-          <Text style={styles.emptyEmoji}>📷</Text>
-          <Text style={styles.emptyTitle}>Your photo story starts here</Text>
-          <Text style={styles.emptyText}>Add a post to share a moment with {pet.name}.</Text>
-          {pet.isUserPet ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/create-post', params: { petId: pet.id } })}
-              style={styles.primaryButton}>
-              <Text style={styles.primaryText}>Share a photo</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        <Container>
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>📷</Text>
+            <Text style={styles.emptyTitle}>Your photo story starts here</Text>
+            <Text style={styles.emptyText}>Add a post to share a moment with {pet.name}.</Text>
+            {pet.isUserPet ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push({ pathname: '/create-post', params: { petId: pet.id } })}
+                style={styles.primaryButton}>
+                <Text style={styles.primaryText}>Share a photo</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </Container>
       }
       ListHeaderComponent={
-        <View style={styles.header}>
-          {ownedPets.length > 0 ? (
-            <View style={styles.switcherSection}>
-              <View style={styles.switcherHeader}>
-                <View>
-                  <Text style={styles.switcherEyebrow}>YOUR PET FAMILY</Text>
-                  <Text style={styles.switcherTitle}>
-                    {ownedPets.length} {ownedPets.length === 1 ? 'Pet' : 'Pets'}
-                  </Text>
+        <Container>
+          <View style={styles.header}>
+            {ownedPets.length > 0 ? (
+              <View style={styles.switcherSection}>
+                <View style={styles.switcherHeader}>
+                  <View>
+                    <Text style={styles.switcherEyebrow}>YOUR PET FAMILY</Text>
+                    <Text style={styles.switcherTitle}>
+                      {ownedPets.length} {ownedPets.length === 1 ? 'Pet' : 'Pets'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add another pet"
+                    onPress={() => router.push('/pet-setup')}
+                    style={styles.addPetButton}>
+                    <Text style={styles.addPetButtonText}>＋ Add pet</Text>
+                  </Pressable>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Add another pet"
-                  onPress={() => router.push('/pet-setup')}
-                  style={styles.addPetButton}>
-                  <Text style={styles.addPetButtonText}>＋ Add pet</Text>
-                </Pressable>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.switcherScroll}
+                  style={styles.boundedScroll}>
+                  {ownedPets.map((p) => {
+                    const isSelected = p.id === pet.id;
+                    return (
+                      <Pressable
+                        key={p.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={'Switch to ' + p.name}
+                        onPress={() => {
+                          setActivePetId(p.id);
+                          if (targetPetId && targetPetId !== p.id) {
+                            router.setParams({ id: p.id });
+                          }
+                        }}
+                        style={[styles.petChip, isSelected ? styles.petChipSelected : null]}>
+                        <View style={styles.chipAvatarWrap}>
+                          <PetArtwork
+                            aspectRatio={1}
+                            name={p.name}
+                            photoUri={p.photoUri}
+                            species={p.species}
+                          />
+                        </View>
+                        <View style={styles.chipTextWrap}>
+                          <Text
+                            numberOfLines={1}
+                            style={[styles.chipName, isSelected ? styles.chipNameSelected : null]}>
+                            {p.name}
+                          </Text>
+                          <Text numberOfLines={1} style={styles.chipSpecies}>
+                            {p.species}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
               </View>
+            ) : null}
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.switcherScroll}
-                style={styles.boundedScroll}>
-                {ownedPets.map((p) => {
-                  const isSelected = p.id === pet.id;
-                  return (
-                    <Pressable
-                      key={p.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={'Switch to ' + p.name}
-                      onPress={() => {
-                        setActivePetId(p.id);
-                        if (targetPetId && targetPetId !== p.id) {
-                          router.setParams({ id: p.id });
-                        }
-                      }}
-                      style={[styles.petChip, isSelected ? styles.petChipSelected : null]}>
-                      <View style={styles.chipAvatarWrap}>
-                        <PetArtwork
-                          aspectRatio={1}
-                          name={p.name}
-                          photoUri={p.photoUri}
-                          species={p.species}
-                        />
-                      </View>
-                      <View style={styles.chipTextWrap}>
-                        <Text
-                          numberOfLines={1}
-                          style={[styles.chipName, isSelected ? styles.chipNameSelected : null]}>
-                          {p.name}
-                        </Text>
-                        <Text numberOfLines={1} style={styles.chipSpecies}>
-                          {p.species}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+            <PetArtwork
+              aspectRatio={1.5}
+              name={pet.name}
+              photoUri={pet.photoUri}
+              species={pet.species}
+            />
+            <View style={styles.profileInfo}>
+              <View style={styles.profileNames}>
+                <Text selectable style={styles.name}>
+                  {pet.name}
+                </Text>
+                <Text selectable style={styles.species}>
+                  {pet.species}
+                </Text>
+              </View>
+              <View style={styles.profileButtons}>
+                {pet.isUserPet ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/pet-setup',
+                        params: { edit: 'true', id: pet.id },
+                      })
+                    }
+                    style={styles.editButton}>
+                    <Text style={styles.editButtonText}>Edit profile</Text>
+                  </Pressable>
+                ) : null}
+                {pet.isUserPet ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/create-post',
+                        params: { petId: pet.id },
+                      })
+                    }
+                    style={styles.shareMomentButton}>
+                    <Text style={styles.shareMomentButtonText}>＋ Post</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
-          ) : null}
-
-          <PetArtwork
-            aspectRatio={1.5}
-            name={pet.name}
-            photoUri={pet.photoUri}
-            species={pet.species}
-          />
-          <View style={styles.profileInfo}>
-            <View style={styles.profileNames}>
-              <Text selectable style={styles.name}>
-                {pet.name}
-              </Text>
-              <Text selectable style={styles.species}>
-                {pet.species}
-              </Text>
-            </View>
-            <View style={styles.profileButtons}>
-              {pet.isUserPet ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/pet-setup',
-                      params: { edit: 'true', id: pet.id },
-                    })
-                  }
-                  style={styles.editButton}>
-                  <Text style={styles.editButtonText}>Edit profile</Text>
-                </Pressable>
-              ) : null}
-              {pet.isUserPet ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/create-post',
-                      params: { petId: pet.id },
-                    })
-                  }
-                  style={styles.shareMomentButton}>
-                  <Text style={styles.shareMomentButtonText}>＋ Post</Text>
-                </Pressable>
-              ) : null}
+            <Text style={styles.personalityLabel}>Personality</Text>
+            <Text selectable style={styles.description}>
+              {pet.personality}
+            </Text>
+            <View style={styles.postHeading}>
+              <Text style={styles.postHeadingTitle}>Shared moments</Text>
+              <Text style={styles.postHeadingCount}>{petPosts.length}</Text>
             </View>
           </View>
-          <Text style={styles.personalityLabel}>Personality</Text>
-          <Text selectable style={styles.description}>
-            {pet.personality}
-          </Text>
-          <View style={styles.postHeading}>
-            <Text style={styles.postHeadingTitle}>Shared moments</Text>
-            <Text style={styles.postHeadingCount}>{petPosts.length}</Text>
-          </View>
-        </View>
+        </Container>
       }
       renderItem={({ item }) => (
-        <PetPostCard
-          onReact={(reaction) => {
-            void toggleReaction(item.id, reaction).catch(() => undefined);
-          }}
-          pet={pet}
-          post={item}
-          reaction={reactions[item.id]}
-        />
+        <Container>
+          <PetPostCard
+            onReact={(reaction) => {
+              void toggleReaction(item.id, reaction).catch(() => undefined);
+            }}
+            pet={pet}
+            post={item}
+            reaction={reactions[item.id]}
+          />
+        </Container>
       )}
     />
   );
@@ -237,7 +244,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f5ef',
     flexGrow: 1,
     gap: 14,
-    padding: 16,
+    paddingVertical: 16,
     paddingBottom: 40,
   },
   loading: {
@@ -253,6 +260,7 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 12,
+    width: '100%',
   },
   switcherSection: {
     backgroundColor: '#ffffff',
@@ -408,6 +416,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 9,
     padding: 22,
+    width: '100%',
   },
   emptyEmoji: {
     fontSize: 32,
