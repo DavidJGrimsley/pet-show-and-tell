@@ -19,13 +19,13 @@ The app uses Expo SDK 58, TypeScript, Expo Router, StyleSheet, Zustand, Expo SQL
 - Selected photos are copied into app-owned storage. Nothing is uploaded or shared with other devices.
 - Comments, real accounts, public sharing, moderation, and backend storage are deferred.
 
-## Tutorial routes
+## App routes
 
 - `/` — pet feed and reactions
 - `/pet-setup` — create or edit the local pet profile
 - `/create-post` — choose a photo or sample and add a local post
 - `/my-pet` — browse local pet profiles and their posts
 - `/post/[id]` — post detail; comments are a planned follow-up
-- `/exposition` — MDS package learning material
+- `/settings` — app information and web preview sample reset
 
 See `project/info.md`, `project/style.md`, `project/guidelines.md`, and `project/todo.md` for scope and project memory.

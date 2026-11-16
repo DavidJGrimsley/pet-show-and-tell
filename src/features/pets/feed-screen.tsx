@@ -3,7 +3,6 @@ import { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { Container } from '../../components/Container';
 import { PetArtwork } from '../../components/pet-artwork';
 import { usePetStore } from './pet-store';
 import { PetPostCard } from './pet-post-card';
@@ -87,103 +87,111 @@ export default function FeedScreen() {
       ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
       keyExtractor={(item) => item.id}
       ListEmptyComponent={
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>🐾</Text>
-          <Text style={styles.emptyTitle}>Your first pet moment starts here</Text>
-          <Text style={styles.emptyBody}>Share a picture to add it to your feed.</Text>
-        </View>
+        <Container>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyEmoji}>🐾</Text>
+            <Text style={styles.emptyTitle}>Your first pet moment starts here</Text>
+            <Text style={styles.emptyBody}>Share a picture to add it to your feed.</Text>
+          </View>
+        </Container>
       }
       ListHeaderComponent={
-        <View style={styles.header}>
-          <View style={styles.topLine}>
-            <View style={styles.brand}>
-              <Text style={styles.eyebrow}>A LITTLE JOY, EVERY DAY</Text>
-              <Text style={styles.title}>Pet Show and Tell</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={ownedPets.length > 0 ? 'View your pets' : 'Create a pet profile'}
-              onPress={() => router.push(ownedPets.length > 0 ? '/my-pet' : '/pet-setup')}
-              style={styles.profileButton}>
-              <Text style={styles.profileEmoji}>🐾</Text>
-              <Text style={styles.profileButtonText}>
-                {ownedPets.length > 1 ? 'My pets (' + ownedPets.length + ')' : 'My pet'}
-              </Text>
-            </Pressable>
-          </View>
-          <Text style={styles.subtitle}>Good pictures. Good company. Good pets.</Text>
-          {Platform.OS === 'web' ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/settings')}
-              style={styles.settingsLink}>
-              <Text style={styles.settingsLinkText}>Settings</Text>
-            </Pressable>
-          ) : null}
-          <View style={styles.communityCard}>
-            <View style={styles.communityCopy}>
-              <Text style={styles.communityTitle}>Share a little moment</Text>
-              <Text style={styles.communityBody}>
-                Add a photo of {ownedPets.length > 1 ? 'your pets' : (localPet?.name ?? 'your pet')}{' '}
-                to your on-device feed.
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/create-post')}
-              style={styles.addButton}>
-              <Text style={styles.addButtonText}>＋ Post</Text>
-            </Pressable>
-          </View>
-
-          {ownedPets.length > 0 ? (
-            <View style={styles.petReel}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.petReelScroll}
-                style={styles.boundedScroll}>
-                {ownedPets.map((p) => (
-                  <Pressable
-                    key={p.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={'View ' + p.name + "'s profile"}
-                    onPress={() => router.push({ pathname: '/my-pet', params: { id: p.id } })}
-                    style={styles.petReelItem}>
-                    <View style={styles.petReelAvatarWrap}>
-                      <PetArtwork
-                        aspectRatio={1}
-                        name={p.name}
-                        photoUri={p.photoUri}
-                        species={p.species}
-                      />
-                    </View>
-                    <Text numberOfLines={1} style={styles.petReelName}>
-                      {p.name}
-                    </Text>
-                  </Pressable>
-                ))}
+        <Container>
+          <View style={styles.header}>
+            <View style={styles.topLine}>
+              <View style={styles.brand}>
+                <Text style={styles.eyebrow}>A LITTLE JOY, EVERY DAY</Text>
+                <Text style={styles.title}>Pet Show and Tell</Text>
+              </View>
+              <View style={styles.headerActions}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Add another pet"
-                  onPress={() => router.push('/pet-setup')}
-                  style={styles.addPetReelButton}>
-                  <View style={styles.addPetIconWrap}>
-                    <Text style={styles.addPetIcon}>＋</Text>
-                  </View>
-                  <Text numberOfLines={1} style={styles.addPetText}>
-                    Add pet
+                  accessibilityLabel={
+                    ownedPets.length > 0 ? 'View your pets' : 'Create a pet profile'
+                  }
+                  onPress={() => router.push(ownedPets.length > 0 ? '/my-pet' : '/pet-setup')}
+                  style={styles.profileButton}>
+                  <Text style={styles.profileEmoji}>🐾</Text>
+                  <Text style={styles.profileButtonText}>
+                    {ownedPets.length > 1 ? 'My pets (' + ownedPets.length + ')' : 'My pet'}
                   </Text>
                 </Pressable>
-              </ScrollView>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Settings"
+                  onPress={() => router.push('/settings')}
+                  style={styles.settingsButton}>
+                  <Text style={styles.settingsButtonText}>Settings</Text>
+                </Pressable>
+              </View>
             </View>
-          ) : null}
+            <Text style={styles.subtitle}>Good pictures. Good company. Good pets.</Text>
+            <View style={styles.communityCard}>
+              <View style={styles.communityCopy}>
+                <Text style={styles.communityTitle}>Share a little moment</Text>
+                <Text style={styles.communityBody}>
+                  Add a photo of{' '}
+                  {ownedPets.length > 1 ? 'your pets' : (localPet?.name ?? 'your pet')} to your
+                  on-device feed.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/create-post')}
+                style={styles.addButton}>
+                <Text style={styles.addButtonText}>＋ Post</Text>
+              </Pressable>
+            </View>
 
-          <View style={styles.feedHeading}>
-            <Text style={styles.feedTitle}>Meet the pets</Text>
-            <Text style={styles.feedCount}>{visiblePosts.length} moments</Text>
+            {ownedPets.length > 0 ? (
+              <View style={styles.petReel}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.petReelScroll}
+                  style={styles.boundedScroll}>
+                  {ownedPets.map((p) => (
+                    <Pressable
+                      key={p.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={'View ' + p.name + "'s profile"}
+                      onPress={() => router.push({ pathname: '/my-pet', params: { id: p.id } })}
+                      style={styles.petReelItem}>
+                      <View style={styles.petReelAvatarWrap}>
+                        <PetArtwork
+                          aspectRatio={1}
+                          name={p.name}
+                          photoUri={p.photoUri}
+                          species={p.species}
+                        />
+                      </View>
+                      <Text numberOfLines={1} style={styles.petReelName}>
+                        {p.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add another pet"
+                    onPress={() => router.push('/pet-setup')}
+                    style={styles.addPetReelButton}>
+                    <View style={styles.addPetIconWrap}>
+                      <Text style={styles.addPetIcon}>＋</Text>
+                    </View>
+                    <Text numberOfLines={1} style={styles.addPetText}>
+                      Add pet
+                    </Text>
+                  </Pressable>
+                </ScrollView>
+              </View>
+            ) : null}
+
+            <View style={styles.feedHeading}>
+              <Text style={styles.feedTitle}>Meet the pets</Text>
+              <Text style={styles.feedCount}>{visiblePosts.length} moments</Text>
+            </View>
           </View>
-        </View>
+        </Container>
       }
       renderItem={({ item }) => {
         const pet = petsById.get(item.petId);
@@ -191,14 +199,16 @@ export default function FeedScreen() {
           return null;
         }
         return (
-          <PetPostCard
-            onReact={(reaction) => {
-              void toggleReaction(item.id, reaction).catch(() => undefined);
-            }}
-            pet={pet}
-            post={item}
-            reaction={reactions[item.id]}
-          />
+          <Container>
+            <PetPostCard
+              onReact={(reaction) => {
+                void toggleReaction(item.id, reaction).catch(() => undefined);
+              }}
+              pet={pet}
+              post={item}
+              reaction={reactions[item.id]}
+            />
+          </Container>
         );
       }}
     />
@@ -210,7 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f5ef',
     flexGrow: 1,
     gap: 16,
-    padding: 16,
+    paddingVertical: 16,
     paddingBottom: 40,
   },
   centered: {
@@ -251,12 +261,18 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 13,
+    width: '100%',
   },
   topLine: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between',
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   brand: {
     flex: 1,
@@ -277,12 +293,17 @@ const styles = StyleSheet.create({
     color: '#65756b',
     fontSize: 13,
   },
-  settingsLink: {
-    alignSelf: 'flex-start',
+  settingsButton: {
+    alignItems: 'center',
+    backgroundColor: '#e6eee5',
+    borderRadius: 18,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 12,
   },
-  settingsLinkText: {
+  settingsButtonText: {
     color: '#355e48',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
   },
   profileButton: {
@@ -422,6 +443,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 10,
     padding: 24,
+    width: '100%',
   },
   emptyEmoji: {
     fontSize: 38,

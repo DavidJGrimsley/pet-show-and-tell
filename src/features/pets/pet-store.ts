@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   consumeWebPreviewReset,
   createLocalPetPost,
+  deleteLocalPetPost,
   getPetSnapshot,
   resetPetDatabase,
   saveLocalPetProfile,
@@ -22,6 +23,7 @@ interface PetStore {
   resetPreview: () => Promise<void>;
   saveProfile: (input: PetProfileInput, petId?: string) => Promise<Pet>;
   addPost: (input: PetPostInput) => Promise<PetPost>;
+  deletePost: (postId: string) => Promise<void>;
   toggleReaction: (postId: string, reaction: ReactionKind) => Promise<void>;
 }
 
@@ -88,6 +90,19 @@ export const usePetStore = create<PetStore>((set, get) => ({
     const post = await createLocalPetPost(input);
     set((state) => ({ posts: [post, ...state.posts] }));
     return post;
+  },
+
+  deletePost: async (postId) => {
+    set({ error: null });
+    await deleteLocalPetPost(postId);
+    set((state) => {
+      const reactions = { ...state.reactions };
+      delete reactions[postId];
+      return {
+        posts: state.posts.filter((item) => item.id !== postId),
+        reactions,
+      };
+    });
   },
 
   toggleReaction: async (postId, reaction) => {

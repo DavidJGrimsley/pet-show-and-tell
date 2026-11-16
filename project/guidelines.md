@@ -36,10 +36,10 @@
 - Provide a bundled sample image path if photo-library permission is denied.
 
 ## Starter and Tutorial Code
-- Treat exposition and stylist pages as temporary learning material; keep them until the tutorial phase is complete.
+- Keep the product app free of CESS exposition and Stylist demo routes; do not re-add these tutorials to the app route tree.
 - Review project/todo.md and update task state as work is completed.
 - Keep tutorial TODOs bite-sized, route/file-specific, and easy to verify by observation.
-- Don't remove useful MDS onboarding, data, or settings examples without updating the ejection inventory.
+- Pet data belongs in `src/storage/pet-database*.ts` and `src/data/pet-seed.ts`. The removed exposition `mock-app.ts` / `local-data*.ts` adapter was demo data, not product storage; preserve the active onboarding and Settings routes.
 
 ## Workflow
 - Use MDS guidance for project planning and app setup.

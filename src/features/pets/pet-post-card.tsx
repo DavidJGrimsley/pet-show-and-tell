@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 13,
     padding: 14,
+    width: '100%',
   },
   postHeader: {
     alignItems: 'center',
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
   },
   petName: {
     color: '#263d32',
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '900',
   },
   species: {
@@ -143,8 +144,8 @@ const styles = StyleSheet.create({
   },
   description: {
     color: '#33443a',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
   },
   actions: {
     alignItems: 'center',

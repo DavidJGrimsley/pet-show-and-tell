@@ -6,7 +6,7 @@ export const BUNDLED_PET_IMAGES: Record<string, ImageSourcePropType> = {
   'Louie.jpeg': require('../../assets/images/pets/Louie.jpeg'),
   'Louie2.jpeg': require('../../assets/images/pets/Louie2.jpeg'),
   'Mia.jpeg': require('../../assets/images/pets/Mia.jpeg'),
-  'Mrs Frizzle.jpeg': require('../../assets/images/pets/Mrs Frizzle.jpeg'),
+  'Mrs Frizzle.jpg': require('../../assets/images/pets/Mrs Frizzle.jpg'),
   'Nala.jpeg': require('../../assets/images/pets/Nala.jpeg'),
   'Nora.jpeg': require('../../assets/images/pets/Nora.jpeg'),
   'Tippy.jpeg': require('../../assets/images/pets/Tippy.jpeg'),
