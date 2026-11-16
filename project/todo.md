@@ -7,10 +7,10 @@ Add defects only as `- [ ] [Bug · Origin: Phase N] <concrete defect>`; do not d
 ## Phase 0 — Orientation And Planning
 
 - [x] Confirm StyleSheet-only component strategy in `project/info.md`; reviewed the generated app and confirmed no Expo UI, Universal Components, or Native Tabs conflicts.
-- [x] Review the MDS ejection inventory. MDS reports no generated inventory for this scaffold; recorded that result and retained the tutorial routes.
+- [x] Review the MDS ejection inventory; none was generated. The unused exposition/Stylist tutorials were later removed during cleanup.
 - [x] Review `project/` product, technical, and style notes; resolve all optional context markers.
 - [x] Review the Stylist page and confirm the warm neutral, green, and coral visual direction in `project/style.md` and `project/theme.json`.
-- [x] Review package exposition routes and retain them as tutorial material for now.
+- [x] Review and remove the unused CESS exposition routes, tutorial screens, and demo task adapter; keep the active pet routes and database.
 - [x] Upgrade Expo stepwise from the generated SDK to SDK 58; update the versioned guidance and Expo-compatible dependencies.
 - [x] Defer EAS and release setup; this milestone targets local Android Expo Go only.
 
