@@ -1,14 +1,19 @@
 import { INITIAL_SEEDED_PETS, INITIAL_SEEDED_POSTS } from '../data/pet-seed';
-import type {
-  Pet,
-  PetPost,
-  PetPostInput,
-  PetProfileInput,
-  PetSnapshot,
-  ReactionKind,
+import {
+  MAX_COMMENT_LENGTH,
+  type Pet,
+  type PetComment,
+  type PetCommentInput,
+  type PetPost,
+  type PetPostInput,
+  type PetProfileInput,
+  type PetSnapshot,
+  type ReactionKind,
+  normalizeCommentBody,
 } from '../types/pet';
 
-const SESSION_KEY = 'pet-show-and-tell.preview.v1';
+const SESSION_KEY = 'pet-show-and-tell.preview.v2';
+const LEGACY_V1_SESSION_KEY = 'pet-show-and-tell.preview.v1';
 
 const NON_USER_SEEDED_PET_IDS = new Set(['pet-mia', 'pet-tippy']);
 
@@ -76,6 +81,8 @@ function migrateSessionState(loaded: MemoryState): { next: MemoryState; changed:
       pets,
       posts,
       reactions: loaded.reactions,
+      comments: loaded.comments,
+      commentReactions: loaded.commentReactions,
     },
     changed,
   };
@@ -85,6 +92,8 @@ interface MemoryState {
   pets: Pet[];
   posts: PetPost[];
   reactions: Record<string, ReactionKind>;
+  comments: PetComment[];
+  commentReactions: Record<string, ReactionKind>;
 }
 
 let state: MemoryState | undefined;
@@ -94,6 +103,8 @@ function cloneSeed(): MemoryState {
     pets: INITIAL_SEEDED_PETS.map((pet) => ({ ...pet })),
     posts: INITIAL_SEEDED_POSTS.map((post) => ({ ...post })),
     reactions: {},
+    comments: [],
+    commentReactions: {},
   };
 }
 
@@ -101,12 +112,34 @@ function isReaction(value: unknown): value is ReactionKind {
   return value === 'like' || value === 'love';
 }
 
-function readSession(): MemoryState | undefined {
+function isValidCommentRecord(value: unknown, postIds: Set<string>): value is PetComment {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Partial<PetComment>;
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.postId !== 'string' ||
+    typeof candidate.body !== 'string' ||
+    typeof candidate.createdAt !== 'string'
+  ) {
+    return false;
+  }
+  const trimmedLength = candidate.body.trim().length;
+  return (
+    candidate.id.length > 0 &&
+    postIds.has(candidate.postId) &&
+    trimmedLength >= 1 &&
+    trimmedLength <= MAX_COMMENT_LENGTH
+  );
+}
+
+function readSessionKey(key: string, includeComments: boolean): MemoryState | undefined {
   try {
     if (typeof sessionStorage === 'undefined') {
       return undefined;
     }
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = sessionStorage.getItem(key);
     if (!raw) {
       return undefined;
     }
@@ -122,10 +155,37 @@ function readSession(): MemoryState | undefined {
         }
       }
     }
+    const posts = parsed.posts.map((post) => ({ ...post }));
+    const postIds = new Set(posts.map((post) => post.id));
+    const comments: PetComment[] = [];
+    const commentIds = new Set<string>();
+    if (includeComments && Array.isArray(parsed.comments)) {
+      for (const item of parsed.comments) {
+        if (isValidCommentRecord(item, postIds)) {
+          comments.push({
+            id: item.id,
+            postId: item.postId,
+            body: item.body.trim(),
+            createdAt: item.createdAt,
+          });
+          commentIds.add(item.id);
+        }
+      }
+    }
+    const commentReactions: Record<string, ReactionKind> = {};
+    if (includeComments && parsed.commentReactions && typeof parsed.commentReactions === 'object') {
+      for (const [commentId, value] of Object.entries(parsed.commentReactions)) {
+        if (commentIds.has(commentId) && isReaction(value)) {
+          commentReactions[commentId] = value;
+        }
+      }
+    }
     return {
       pets: parsed.pets.map((pet) => ({ ...pet })),
-      posts: parsed.posts.map((post) => ({ ...post })),
+      posts,
       reactions,
+      comments,
+      commentReactions,
     };
   } catch {
     return undefined;
@@ -161,6 +221,10 @@ function snapshotOf(next: MemoryState): PetSnapshot {
       .map((post) => ({ ...post }))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
     reactions: { ...next.reactions },
+    comments: next.comments
+      .map((comment) => ({ ...comment }))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+    commentReactions: { ...next.commentReactions },
   };
 }
 
@@ -179,6 +243,17 @@ export function createLocalId(prefix: string) {
   return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+function hasSessionKey(key: string): boolean {
+  try {
+    if (typeof sessionStorage === 'undefined') {
+      return false;
+    }
+    return sessionStorage.getItem(key) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export async function initializePetDatabase() {
   if (state) {
     return;
@@ -186,18 +261,28 @@ export async function initializePetDatabase() {
   if (locationRequestsReset()) {
     clearSession();
     state = cloneSeed();
-    return;
-  }
-  const stored = readSession();
-  if (!stored) {
-    state = cloneSeed();
-    return;
-  }
-  const { next, changed } = migrateSessionState(stored);
-  state = next;
-  if (changed) {
     writeSession(state);
+    return;
   }
+  const storedV2 = readSessionKey(SESSION_KEY, true);
+  if (storedV2) {
+    const { next, changed } = migrateSessionState(storedV2);
+    state = next;
+    if (changed) {
+      writeSession(state);
+    }
+    return;
+  }
+  if (!hasSessionKey(SESSION_KEY)) {
+    const storedV1 = readSessionKey(LEGACY_V1_SESSION_KEY, false);
+    if (storedV1) {
+      const { next } = migrateSessionState(storedV1);
+      state = next;
+      writeSession(state);
+      return;
+    }
+  }
+  state = cloneSeed();
 }
 
 export async function getPetSnapshot(): Promise<PetSnapshot> {
@@ -273,6 +358,13 @@ export async function deleteLocalPetPost(postId: string): Promise<void> {
   }
   current.posts = current.posts.filter((item) => item.id !== postId);
   delete current.reactions[postId];
+  const removedCommentIds = new Set(
+    current.comments.filter((comment) => comment.postId === postId).map((comment) => comment.id)
+  );
+  current.comments = current.comments.filter((comment) => comment.postId !== postId);
+  for (const commentId of removedCommentIds) {
+    delete current.commentReactions[commentId];
+  }
   writeSession(current);
 }
 
@@ -287,9 +379,46 @@ export async function saveLocalReaction(postId: string, reaction: ReactionKind |
   writeSession(current);
 }
 
+export async function createLocalPetComment(input: PetCommentInput): Promise<PetComment> {
+  await initializePetDatabase();
+  const current = state as MemoryState;
+  const body = normalizeCommentBody(input.body);
+  if (!current.posts.some((item) => item.id === input.postId)) {
+    throw new Error('This post could not be found.');
+  }
+  const comment: PetComment = {
+    id: createLocalId('comment-local'),
+    postId: input.postId,
+    body,
+    createdAt: new Date().toISOString(),
+  };
+  current.comments.unshift(comment);
+  writeSession(current);
+  return { ...comment };
+}
+
+export async function saveLocalCommentReaction(commentId: string, reaction: ReactionKind | null) {
+  await initializePetDatabase();
+  const current = state as MemoryState;
+  if (!reaction) {
+    delete current.commentReactions[commentId];
+    writeSession(current);
+    return;
+  }
+  if (!isReaction(reaction)) {
+    throw new Error('Unsupported reaction.');
+  }
+  if (!current.comments.some((item) => item.id === commentId)) {
+    throw new Error('This comment could not be found.');
+  }
+  current.commentReactions[commentId] = reaction;
+  writeSession(current);
+}
+
 export async function resetPetDatabase() {
   clearSession();
   state = cloneSeed();
+  writeSession(state);
 }
 
 export async function consumeWebPreviewReset() {

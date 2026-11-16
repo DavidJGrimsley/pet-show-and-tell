@@ -2,14 +2,24 @@ import { create } from 'zustand';
 
 import {
   consumeWebPreviewReset,
+  createLocalPetComment,
   createLocalPetPost,
   deleteLocalPetPost,
   getPetSnapshot,
   resetPetDatabase,
+  saveLocalCommentReaction,
   saveLocalPetProfile,
   saveLocalReaction,
 } from '../../storage/pet-database';
-import type { Pet, PetPost, PetPostInput, PetProfileInput, ReactionKind } from '../../types/pet';
+import type {
+  Pet,
+  PetComment,
+  PetCommentInput,
+  PetPost,
+  PetPostInput,
+  PetProfileInput,
+  ReactionKind,
+} from '../../types/pet';
 
 interface PetStore {
   isHydrated: boolean;
@@ -18,6 +28,8 @@ interface PetStore {
   pets: Pet[];
   posts: PetPost[];
   reactions: Record<string, ReactionKind>;
+  comments: PetComment[];
+  commentReactions: Record<string, ReactionKind>;
   hydrate: () => Promise<boolean>;
   refresh: () => Promise<void>;
   resetPreview: () => Promise<void>;
@@ -25,6 +37,8 @@ interface PetStore {
   addPost: (input: PetPostInput) => Promise<PetPost>;
   deletePost: (postId: string) => Promise<void>;
   toggleReaction: (postId: string, reaction: ReactionKind) => Promise<void>;
+  addComment: (input: PetCommentInput) => Promise<PetComment>;
+  toggleCommentReaction: (commentId: string, reaction: ReactionKind) => Promise<void>;
 }
 
 export const usePetStore = create<PetStore>((set, get) => ({
@@ -34,6 +48,8 @@ export const usePetStore = create<PetStore>((set, get) => ({
   pets: [],
   posts: [],
   reactions: {},
+  comments: [],
+  commentReactions: {},
 
   hydrate: async () => {
     const didReset = await consumeWebPreviewReset();
@@ -58,6 +74,8 @@ export const usePetStore = create<PetStore>((set, get) => ({
         pets: snapshot.pets,
         posts: snapshot.posts,
         reactions: snapshot.reactions,
+        comments: snapshot.comments,
+        commentReactions: snapshot.commentReactions,
         isHydrated: true,
         isLoading: false,
         error: null,
@@ -98,9 +116,18 @@ export const usePetStore = create<PetStore>((set, get) => ({
     set((state) => {
       const reactions = { ...state.reactions };
       delete reactions[postId];
+      const commentReactions = { ...state.commentReactions };
+      const removedCommentIds = new Set(
+        state.comments.filter((item) => item.postId === postId).map((item) => item.id)
+      );
+      for (const commentId of removedCommentIds) {
+        delete commentReactions[commentId];
+      }
       return {
         posts: state.posts.filter((item) => item.id !== postId),
         reactions,
+        comments: state.comments.filter((item) => item.postId !== postId),
+        commentReactions,
       };
     });
   },
@@ -118,6 +145,29 @@ export const usePetStore = create<PetStore>((set, get) => ({
         delete reactions[postId];
       }
       return { reactions };
+    });
+  },
+
+  addComment: async (input) => {
+    set({ error: null });
+    const comment = await createLocalPetComment(input);
+    set((state) => ({ comments: [comment, ...state.comments] }));
+    return comment;
+  },
+
+  toggleCommentReaction: async (commentId, reaction) => {
+    set({ error: null });
+    const currentReaction = get().commentReactions[commentId];
+    const nextReaction = currentReaction === reaction ? null : reaction;
+    await saveLocalCommentReaction(commentId, nextReaction);
+    set((state) => {
+      const commentReactions = { ...state.commentReactions };
+      if (nextReaction) {
+        commentReactions[commentId] = nextReaction;
+      } else {
+        delete commentReactions[commentId];
+      }
+      return { commentReactions };
     });
   },
 }));

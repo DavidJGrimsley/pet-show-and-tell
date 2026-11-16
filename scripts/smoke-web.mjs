@@ -201,11 +201,135 @@ async function addPetAndPost(page) {
   await shot(page, '390-new-pet.png');
   await page.getByRole('button', { name: 'Share a photo' }).click();
   await waitForText(page, 'A MOMENT WITH SMOKE BISCUIT');
-  await chooseUpload(page, 'Choose a photo');
+  await chooseUpload(page, 'Choose another photo');
   await waitForText(page, 'Choose another photo');
   await fillField(page, 'Post caption', NEW_CAPTION);
   await page.getByRole('button', { name: 'Add to the feed' }).click();
   await waitForText(page, NEW_CAPTION);
+}
+
+async function waitForSelected(locator, expected, label) {
+  const started = Date.now();
+  while (Date.now() - started < 5000) {
+    const value = await locator.getAttribute('aria-selected');
+    if (expected ? value === 'true' : value !== 'true') {
+      return;
+    }
+    await locator.page().waitForTimeout(50);
+  }
+  fail(
+    `${label}: expected aria-selected=${String(expected)}, got ${await locator.getAttribute('aria-selected')}`
+  );
+}
+
+async function exercisePostComments(page) {
+  await page.getByRole('button', { name: `View ${NEW_PET}'s post: ${NEW_CAPTION}` }).click();
+  await waitForText(page, 'Comments');
+  await waitForText(page, 'No comments yet');
+  await waitForText(page, '0/180');
+
+  const postLoveButton = page.getByRole('button', { name: `Love ${NEW_PET}'s post` }).last();
+  await postLoveButton.click();
+  await waitForSelected(postLoveButton, true, 'Post Love reaction');
+
+  await fillField(page, 'Add a comment', '   ');
+  await page.getByRole('button', { name: 'Post comment' }).click();
+  await waitForText(page, 'Write a comment before posting.');
+
+  const overLimitComment = 'a'.repeat(181);
+  await fillField(page, 'Add a comment', overLimitComment);
+  await waitForText(page, '181/180');
+  await page.getByRole('button', { name: 'Post comment' }).click();
+  await waitForText(page, 'Comments must be 180 characters or fewer.');
+  await waitForText(page, '0 comments');
+  await waitForText(page, 'No comments yet');
+  if ((await page.getByLabel('Add a comment').inputValue()) !== overLimitComment) {
+    fail('Over-limit comment draft was not preserved after validation error');
+  }
+
+  await fillField(page, 'Add a comment', 'First note for Biscuit');
+  await waitForText(page, '22/180');
+  await page.getByRole('button', { name: 'Post comment' }).click();
+  await waitForText(page, 'First note for Biscuit');
+  await assertTextGone(page, 'No comments yet');
+  await waitForText(page, '0/180');
+
+  await fillField(page, 'Add a comment', 'Second newest note');
+  await page.getByRole('button', { name: 'Post comment' }).click();
+  await waitForText(page, 'Second newest note');
+
+  const text = await bodyText(page);
+  const newestIndex = text.indexOf('Second newest note');
+  const olderIndex = text.indexOf('First note for Biscuit');
+  if (newestIndex === -1 || olderIndex === -1 || newestIndex > olderIndex) {
+    fail('Comments are not rendered newest-first');
+  }
+
+  const commentLikeButton = page.getByRole('button', {
+    name: 'Like comment: Second newest note',
+  });
+  const commentLoveButton = page.getByRole('button', {
+    name: 'Love comment: Second newest note',
+  });
+  await commentLikeButton.click();
+  await waitForSelected(commentLikeButton, true, 'Comment Like reaction');
+  await commentLoveButton.click();
+  await waitForSelected(commentLoveButton, true, 'Comment Love reaction');
+  await waitForSelected(commentLikeButton, false, 'Comment Like cleared');
+  await waitForSelected(postLoveButton, true, 'Post Love reaction preserved');
+
+  await assertNoHorizontalOverflow(page, '390 post detail comments');
+  await shot(page, '390-post-detail-comments.png');
+
+  await page.getByRole('button', { name: 'Back to the feed' }).click();
+  await waitForText(page, 'Meet the pets');
+  await page.getByRole('button', { name: `View ${NEW_PET}'s post: ${NEW_CAPTION}` }).click();
+  await waitForText(page, 'Second newest note');
+  await waitForText(page, 'First note for Biscuit');
+  const persistedCommentLove = page.getByRole('button', {
+    name: 'Love comment: Second newest note',
+  });
+  const persistedCommentLike = page.getByRole('button', {
+    name: 'Like comment: Second newest note',
+  });
+  await waitForSelected(persistedCommentLove, true, 'Persisted comment Love reaction');
+  await waitForSelected(
+    page.getByRole('button', { name: `Love ${NEW_PET}'s post` }).last(),
+    true,
+    'Persisted post Love reaction'
+  );
+
+  // Tap active comment reaction again to clear it and confirm clearing persists while post Love stays selected.
+  await persistedCommentLove.click();
+  await waitForSelected(persistedCommentLove, false, 'Cleared comment Love reaction');
+  await waitForSelected(persistedCommentLike, false, 'Comment Like remains unselected');
+  await waitForSelected(
+    page.getByRole('button', { name: `Love ${NEW_PET}'s post` }).last(),
+    true,
+    'Post Love reaction preserved after clearing comment reaction'
+  );
+  await page.getByRole('button', { name: 'Back to the feed' }).click();
+  await waitForText(page, 'Meet the pets');
+  await page.getByRole('button', { name: `View ${NEW_PET}'s post: ${NEW_CAPTION}` }).click();
+  await waitForText(page, 'Second newest note');
+  await waitForSelected(
+    page.getByRole('button', { name: 'Love comment: Second newest note' }),
+    false,
+    'Cleared comment Love reaction persisted across navigation'
+  );
+  await waitForSelected(
+    page.getByRole('button', { name: 'Like comment: Second newest note' }),
+    false,
+    'Comment Like still unselected across navigation'
+  );
+  await waitForSelected(
+    page.getByRole('button', { name: `Love ${NEW_PET}'s post` }).last(),
+    true,
+    'Post Love reaction still preserved across navigation'
+  );
+
+  await page.getByRole('button', { name: 'Back to the feed' }).click();
+  await waitForText(page, 'Meet the pets');
 }
 
 async function restoreFromSettings(page) {
@@ -338,6 +462,7 @@ try {
   await addPetAndPost(page);
   await assertNoHorizontalOverflow(page, '390 feed after post');
   await shot(page, '390-posted.png');
+  await exercisePostComments(page);
   await restoreFromSettings(page);
   await shot(page, '390-after-settings-reset.png');
 

@@ -6,13 +6,16 @@ import {
   KNOWN_LEGACY_SEED_PET_IDS,
   KNOWN_LEGACY_SEED_POST_IDS,
 } from '../data/pet-seed';
-import type {
-  Pet,
-  PetPost,
-  PetPostInput,
-  PetProfileInput,
-  PetSnapshot,
-  ReactionKind,
+import {
+  type Pet,
+  type PetComment,
+  type PetCommentInput,
+  type PetPost,
+  type PetPostInput,
+  type PetProfileInput,
+  type PetSnapshot,
+  type ReactionKind,
+  normalizeCommentBody,
 } from '../types/pet';
 
 const DATABASE_NAME = 'pet-show-and-tell.db';
@@ -60,6 +63,19 @@ export async function initializePetDatabase() {
         '  postId TEXT PRIMARY KEY NOT NULL,',
         "  value TEXT NOT NULL CHECK (value IN ('like', 'love')),",
         '  FOREIGN KEY (postId) REFERENCES posts(id) ON DELETE CASCADE',
+        ');',
+        'CREATE TABLE IF NOT EXISTS comments (',
+        '  id TEXT PRIMARY KEY NOT NULL,',
+        '  postId TEXT NOT NULL,',
+        '  body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 180),',
+        '  createdAt TEXT NOT NULL,',
+        '  FOREIGN KEY (postId) REFERENCES posts(id) ON DELETE CASCADE',
+        ');',
+        'CREATE INDEX IF NOT EXISTS idx_comments_postId_createdAt ON comments (postId, createdAt DESC);',
+        'CREATE TABLE IF NOT EXISTS comment_reactions (',
+        '  commentId TEXT PRIMARY KEY NOT NULL,',
+        "  value TEXT NOT NULL CHECK (value IN ('like', 'love')),",
+        '  FOREIGN KEY (commentId) REFERENCES comments(id) ON DELETE CASCADE',
         ');',
         'CREATE TABLE IF NOT EXISTS app_migrations (',
         '  id TEXT PRIMARY KEY NOT NULL',
@@ -178,11 +194,12 @@ export async function initializePetDatabase() {
         await applySeedUpdatesV2();
         return;
       }
-      // 1. Remove legacy sample seeds idempotently, preserving user-created records and reactions
+      // 1. Remove legacy sample seeds idempotently, preserving user-created records, reactions, and comments
       for (const legacyPostId of KNOWN_LEGACY_SEED_POST_IDS) {
         await database.runAsync(
           'DELETE FROM posts WHERE id = ? AND NOT EXISTS ' +
             '(SELECT 1 FROM reactions WHERE reactions.postId = posts.id) ' +
+            'AND NOT EXISTS (SELECT 1 FROM comments WHERE comments.postId = posts.id) ' +
             'AND EXISTS (SELECT 1 FROM pets WHERE pets.id = posts.petId AND pets.isUserPet = 0)',
           legacyPostId
         );
@@ -308,12 +325,23 @@ export async function getPetSnapshot(): Promise<PetSnapshot> {
   const reactionRows = await database.getAllAsync<{ postId: string; value: ReactionKind }>(
     'SELECT postId, value FROM reactions'
   );
+  const comments = await database.getAllAsync<PetComment>(
+    'SELECT id, postId, body, createdAt FROM comments ORDER BY createdAt DESC, rowid DESC'
+  );
+  const commentReactionRows = await database.getAllAsync<{
+    commentId: string;
+    value: ReactionKind;
+  }>('SELECT commentId, value FROM comment_reactions');
 
   return {
     pets: pets.map((pet) => ({ ...pet, isUserPet: Boolean(pet.isUserPet) })),
     posts,
     reactions: Object.fromEntries(
       reactionRows.map((reaction) => [reaction.postId, reaction.value])
+    ),
+    comments,
+    commentReactions: Object.fromEntries(
+      commentReactionRows.map((reaction) => [reaction.commentId, reaction.value])
     ),
   };
 }
@@ -433,6 +461,59 @@ export async function saveLocalReaction(postId: string, reaction: ReactionKind |
     'INSERT INTO reactions (postId, value) VALUES (?, ?) ' +
       'ON CONFLICT(postId) DO UPDATE SET value = excluded.value',
     postId,
+    reaction
+  );
+}
+
+export async function createLocalPetComment(input: PetCommentInput): Promise<PetComment> {
+  await initializePetDatabase();
+  const database = await getDatabase();
+  const body = normalizeCommentBody(input.body);
+  const post = await database.getFirstAsync<{ id: string }>(
+    'SELECT id FROM posts WHERE id = ?',
+    input.postId
+  );
+  if (!post) {
+    throw new Error('This post could not be found.');
+  }
+  const comment: PetComment = {
+    id: createLocalId('comment-local'),
+    postId: input.postId,
+    body,
+    createdAt: new Date().toISOString(),
+  };
+  await database.runAsync(
+    'INSERT INTO comments (id, postId, body, createdAt) VALUES (?, ?, ?, ?)',
+    comment.id,
+    comment.postId,
+    comment.body,
+    comment.createdAt
+  );
+  return comment;
+}
+
+export async function saveLocalCommentReaction(commentId: string, reaction: ReactionKind | null) {
+  await initializePetDatabase();
+  const database = await getDatabase();
+  if (!reaction) {
+    await database.runAsync('DELETE FROM comment_reactions WHERE commentId = ?', commentId);
+    return;
+  }
+  if (reaction !== 'like' && reaction !== 'love') {
+    throw new Error('Unsupported reaction.');
+  }
+  const comment = await database.getFirstAsync<{ id: string }>(
+    'SELECT id FROM comments WHERE id = ?',
+    commentId
+  );
+  if (!comment) {
+    throw new Error('This comment could not be found.');
+  }
+
+  await database.runAsync(
+    'INSERT INTO comment_reactions (commentId, value) VALUES (?, ?) ' +
+      'ON CONFLICT(commentId) DO UPDATE SET value = excluded.value',
+    commentId,
     reaction
   );
 }

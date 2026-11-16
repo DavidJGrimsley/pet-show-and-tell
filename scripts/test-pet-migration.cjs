@@ -51,6 +51,14 @@ async function main() {
   let snapshot = await api.getPetSnapshot();
   assert.equal(snapshot.pets.length, 7);
   assert.equal(snapshot.posts.length, 9);
+  assert.deepEqual(snapshot.comments, []);
+  assert.deepEqual(snapshot.commentReactions, {});
+  const schemaEntries = db.raw
+    .prepare(
+      "SELECT type, name FROM sqlite_master WHERE name IN ('comments', 'comment_reactions', 'idx_comments_postId_createdAt')"
+    )
+    .all();
+  assert.equal(schemaEntries.length, 3);
   assert.equal(
     snapshot.posts.find((post) => post.id === 'post-nora-1').caption,
     'What a cozy girl.'
@@ -119,16 +127,99 @@ async function main() {
   );
   await assert.rejects(api.deleteLocalPetPost('post-mia-1'));
   await api.saveLocalReaction(addedPost.id, 'love');
+
+  // Comment validation, creation, ordering, per-comment reactions, and cascade delete on post delete
+  await assert.rejects(api.createLocalPetComment({ postId: addedPost.id, body: '' }));
+  await assert.rejects(api.createLocalPetComment({ postId: addedPost.id, body: '   \n\t  ' }));
+  await assert.rejects(api.createLocalPetComment({ postId: addedPost.id, body: 'a'.repeat(181) }));
+  await assert.rejects(api.createLocalPetComment({ postId: 'missing-post', body: 'Hello' }));
+  assert.throws(() => {
+    db.raw
+      .prepare(
+        "INSERT INTO comments (id, postId, body, createdAt) VALUES ('bad-empty', ?, '   ', '2026-11-16T12:00:00.000Z')"
+      )
+      .run(addedPost.id);
+  });
+  assert.throws(() => {
+    db.raw
+      .prepare(
+        "INSERT INTO comments (id, postId, body, createdAt) VALUES ('bad-long', ?, ?, '2026-11-16T12:00:00.000Z')"
+      )
+      .run(addedPost.id, 'b'.repeat(181));
+  });
+
+  const maxComment = await api.createLocalPetComment({
+    postId: addedPost.id,
+    body: `  ${'x'.repeat(180)}  `,
+  });
+  assert.equal(maxComment.body, 'x'.repeat(180));
+  const secondComment = await api.createLocalPetComment({
+    postId: addedPost.id,
+    body: 'Second comment newest',
+  });
+  await api.saveLocalCommentReaction(secondComment.id, 'like');
+  assert.throws(() => {
+    db.raw
+      .prepare("INSERT INTO comment_reactions (commentId, value) VALUES (?, 'wow')")
+      .run(secondComment.id);
+  });
+  snapshot = await api.getPetSnapshot();
+  const addedPostComments = snapshot.comments.filter((c) => c.postId === addedPost.id);
+  assert.equal(addedPostComments.length, 2);
+  assert.equal(addedPostComments[0].id, secondComment.id);
+  assert.equal(addedPostComments[1].id, maxComment.id);
+  assert.equal(snapshot.reactions[addedPost.id], 'love');
+  assert.equal(snapshot.commentReactions[secondComment.id], 'like');
+
+  // Toggle comment reaction (like -> love -> clear) while preserving post reaction
+  await api.saveLocalCommentReaction(secondComment.id, 'love');
+  snapshot = await api.getPetSnapshot();
+  assert.equal(snapshot.commentReactions[secondComment.id], 'love');
+  assert.equal(snapshot.reactions[addedPost.id], 'love');
+  await api.saveLocalCommentReaction(secondComment.id, null);
+  snapshot = await api.getPetSnapshot();
+  assert.equal(snapshot.commentReactions[secondComment.id], undefined);
+  assert.equal(snapshot.reactions[addedPost.id], 'love');
+  await api.saveLocalCommentReaction(secondComment.id, 'like');
+
   await api.deleteLocalPetPost(addedPost.id);
+  snapshot = await api.getPetSnapshot();
   assert.equal(
-    (await api.getPetSnapshot()).posts.some((post) => post.id === addedPost.id),
+    snapshot.posts.some((post) => post.id === addedPost.id),
     false
   );
+  assert.equal(
+    snapshot.comments.some((comment) => comment.postId === addedPost.id),
+    false
+  );
+  assert.equal(snapshot.commentReactions[secondComment.id], undefined);
+  assert.equal(
+    db.raw.prepare('SELECT COUNT(*) AS count FROM comments WHERE postId = ?').get(addedPost.id)
+      .count,
+    0
+  );
+  assert.equal(
+    db.raw
+      .prepare('SELECT COUNT(*) AS count FROM comment_reactions WHERE commentId = ?')
+      .get(secondComment.id).count,
+    0
+  );
+
   const recreatedPost = await api.createLocalPetPost({
     petId: addedPet.id,
     photoUri: 'file:post',
     caption: 'Test post',
   });
+  await api.saveLocalReaction(recreatedPost.id, 'love');
+  const keptOlderComment = await api.createLocalPetComment({
+    postId: recreatedPost.id,
+    body: 'First kept comment',
+  });
+  const keptNewerComment = await api.createLocalPetComment({
+    postId: recreatedPost.id,
+    body: 'Second kept comment',
+  });
+  await api.saveLocalCommentReaction(keptNewerComment.id, 'love');
   await assert.rejects(
     api.saveLocalPetProfile(
       { name: 'Missing', species: 'Dog', photoUri: '', personality: 'Test' },
@@ -146,6 +237,13 @@ async function main() {
   assert.equal(snapshot.pets.find((pet) => pet.id === louie.id).photoUri, 'file:mine');
   assert.equal(snapshot.posts.length, 10);
   assert.equal(snapshot.posts.find((post) => post.id === recreatedPost.id).caption, 'Test post');
+  assert.equal(snapshot.reactions[recreatedPost.id], 'love');
+  const reloadedComments = snapshot.comments.filter((c) => c.postId === recreatedPost.id);
+  assert.deepEqual(
+    reloadedComments.map((c) => c.id),
+    [keptNewerComment.id, keptOlderComment.id]
+  );
+  assert.equal(snapshot.commentReactions[keptNewerComment.id], 'love');
 
   // Upgrade an existing installation and preserve a caption the user changed,
   // while still updating an unchanged old caption even if the post photo was replaced.
@@ -232,8 +330,57 @@ async function main() {
   assert.ok(snapshot.posts.some((post) => post.id === 'post-milo-trail'));
   assert.equal(snapshot.reactions['post-user'], 'love');
   assert.equal(snapshot.reactions['post-milo-trail'], 'like');
+  assert.deepEqual(snapshot.comments, []);
+  assert.deepEqual(snapshot.commentReactions, {});
+
+  // Legacy seed cleanup must NOT delete a legacy seeded post that has comments (even with no post reaction).
+  db = newDb();
+  db.raw.exec(
+    "PRAGMA foreign_keys=ON; CREATE TABLE pets (id TEXT PRIMARY KEY, name TEXT NOT NULL, species TEXT NOT NULL, photoUri TEXT NOT NULL, description TEXT NOT NULL, createdAt TEXT NOT NULL, isUserPet INTEGER NOT NULL); CREATE TABLE posts (id TEXT PRIMARY KEY, petId TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE, photoUri TEXT NOT NULL, description TEXT NOT NULL, createdAt TEXT NOT NULL); CREATE TABLE reactions (postId TEXT PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE, value TEXT NOT NULL); CREATE TABLE comments (id TEXT PRIMARY KEY NOT NULL, postId TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE, body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 180), createdAt TEXT NOT NULL); CREATE TABLE comment_reactions (commentId TEXT PRIMARY KEY NOT NULL REFERENCES comments(id) ON DELETE CASCADE, value TEXT NOT NULL CHECK (value IN ('like', 'love'))); INSERT INTO pets VALUES ('pet-milo','Milo','Dog','seed:dog','Old','2026-01-01',0), ('pet-luna','Luna','Cat','seed:cat','Old','2026-01-01',0); INSERT INTO posts VALUES ('post-milo-trail','pet-milo','seed:trail','Old','2026-01-01'), ('post-luna-window','pet-luna','seed:window','Old','2026-01-01'); INSERT INTO comments VALUES ('c-milo-1','post-milo-trail','Keep me','2026-01-02T10:00:00.000Z'); INSERT INTO comment_reactions VALUES ('c-milo-1','love');"
+  );
+  api = loadDatabaseModule();
+  snapshot = await api.getPetSnapshot();
+  assert.ok(snapshot.posts.some((post) => post.id === 'post-milo-trail'));
+  assert.ok(snapshot.pets.some((pet) => pet.id === 'pet-milo'));
+  assert.equal(
+    snapshot.posts.some((post) => post.id === 'post-luna-window'),
+    false
+  );
+  assert.equal(
+    snapshot.pets.some((pet) => pet.id === 'pet-luna'),
+    false
+  );
+  assert.equal(snapshot.comments.find((c) => c.id === 'c-milo-1').body, 'Keep me');
+  assert.equal(snapshot.commentReactions['c-milo-1'], 'love');
+
+  // Existing post-seed-v2 DB without comments tables upgrades cleanly and supports pet-delete cascade.
+  db = newDb();
+  db.raw.exec(
+    "PRAGMA foreign_keys=ON; CREATE TABLE pets (id TEXT PRIMARY KEY, name TEXT NOT NULL, species TEXT NOT NULL, photoUri TEXT NOT NULL, description TEXT NOT NULL, createdAt TEXT NOT NULL, isUserPet INTEGER NOT NULL); CREATE TABLE posts (id TEXT PRIMARY KEY, petId TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE, photoUri TEXT NOT NULL, description TEXT NOT NULL, createdAt TEXT NOT NULL); CREATE TABLE reactions (postId TEXT PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE, value TEXT NOT NULL); CREATE TABLE app_migrations (id TEXT PRIMARY KEY NOT NULL); INSERT INTO app_migrations VALUES ('personal-pets-v1'), ('louie-caption-v1'), ('seed-captions-v1'), ('seed-v2'); INSERT INTO pets VALUES ('pet-user-1','Pip','Dog','file:pip','Friendly','2026-01-01',1); INSERT INTO posts VALUES ('post-user-1','pet-user-1','file:pip-post','Hello','2026-01-02'); INSERT INTO reactions VALUES ('post-user-1','like');"
+  );
+  api = loadDatabaseModule();
+  snapshot = await api.getPetSnapshot();
+  assert.equal(snapshot.reactions['post-user-1'], 'like');
+  const upgradedComment = await api.createLocalPetComment({
+    postId: 'post-user-1',
+    body: 'Upgraded DB comment',
+  });
+  await api.saveLocalCommentReaction(upgradedComment.id, 'like');
+  db.raw.exec("DELETE FROM pets WHERE id = 'pet-user-1'");
+  assert.equal(
+    db.raw.prepare('SELECT COUNT(*) AS count FROM comments WHERE id = ?').get(upgradedComment.id)
+      .count,
+    0
+  );
+  assert.equal(
+    db.raw
+      .prepare('SELECT COUNT(*) AS count FROM comment_reactions WHERE commentId = ?')
+      .get(upgradedComment.id).count,
+    0
+  );
+
   console.log(
-    'Actual database migration: fresh, restart, Louie reuse, posts and reactions passed.'
+    'Actual database migration: fresh, restart, Louie reuse, posts, reactions, comments, and cascades passed.'
   );
 }
 main()
